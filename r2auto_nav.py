@@ -28,7 +28,7 @@ import time
 rotatechange = 0.1
 speedchange = 0.05
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.25
+stop_distance = 0.4
 front_angle = 30
 front_angles = range(-front_angle,front_angle+1,1)
 scanfile = 'lidar.txt'
@@ -64,7 +64,7 @@ class AutoNav(Node):
         
         # create publisher for moving TurtleBot
         self.publisher_ = self.create_publisher(Twist,'cmd_vel',10)
-        # self.get_logger().info('Created publisher')
+        self.get_logger().info('Created publisher')
         
         # create subscription to track orientation
         self.odom_subscription = self.create_subscription(
@@ -72,7 +72,7 @@ class AutoNav(Node):
             'odom',
             self.odom_callback,
             10)
-        # self.get_logger().info('Created subscriber')
+        self.get_logger().info('Created subscriber')
         self.odom_subscription  # prevent unused variable warning
         # initialize variables
         self.roll = 0
@@ -99,13 +99,13 @@ class AutoNav(Node):
 
 
     def odom_callback(self, msg):
-        # self.get_logger().info('In odom_callback')
+        self.get_logger().info('In odom_callback')
         orientation_quat =  msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y, orientation_quat.z, orientation_quat.w)
 
 
     def occ_callback(self, msg):
-        # self.get_logger().info('In occ_callback')
+        self.get_logger().info('In occ_callback')
         # create numpy array
         msgdata = np.array(msg.data)
         # compute histogram to identify percent of bins with -1
@@ -121,22 +121,22 @@ class AutoNav(Node):
         # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
         self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width))
         # print to file
-        # np.savetxt(mapfile, self.occdata)
+        np.savetxt(mapfile, self.occdata)
 
 
     def scan_callback(self, msg):
-        # self.get_logger().info('In scan_callback')
+        self.get_logger().info('In scan_callback')
         # create numpy array
         self.laser_range = np.array(msg.ranges)
         # print to file
-        # np.savetxt(scanfile, self.laser_range)
+        #np.savetxt(scanfile, self.laser_range)
         # replace 0's with nan
         self.laser_range[self.laser_range==0] = np.nan
 
 
     # function to rotate the TurtleBot
     def rotatebot(self, rot_angle):
-        # self.get_logger().info('In rotatebot')
+        self.get_logger().info('In rotatebot')
         # create Twist object
         twist = Twist()
         
@@ -189,7 +189,7 @@ class AutoNav(Node):
 
 
     def pick_direction(self):
-        # self.get_logger().info('In pick_direction')
+        self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
             lr2i = np.nanargmax(self.laser_range)
