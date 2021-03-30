@@ -25,10 +25,10 @@ import cmath
 import time
 
 # constants
-rotatechange = 0.5
-speedchange = 0.1
+rotatechange = 0.1
+speedchange = 0.05
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.2
+stop_distance = 0.4
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
