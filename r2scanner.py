@@ -33,13 +33,14 @@ class Scanner(Node):
     def listener_callback(self, msg):
         # create numpy array
         laser_range = np.array(msg.ranges)
+	# print(msg.ranges[0])
         # replace 0's with nan
         laser_range[laser_range==0] = np.nan
         # find index with minimum value
         lr2i = np.nanargmin(laser_range)
 
         # log the info
-        self.get_logger().info('Shortest distance at %i degrees' % lr2i)
+        # self.get_logger().info('Shortest distance at %i degrees' % lr2i)
 
 
 def main(args=None):

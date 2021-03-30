@@ -25,8 +25,8 @@ import cmath
 import time
 
 # constants
-rotatechange = 0.5
-speedchange = 0.1
+rotatechange = 0.1
+speedchange = 0.05
 occ_bins = [-1, 0, 100, 101]
 stop_distance = 0.2
 front_angle = 30

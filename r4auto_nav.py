@@ -23,6 +23,7 @@ import numpy as np
 import math
 import cmath
 import time
+import random
 
 # constants
 rotatechange = 0.5
@@ -33,6 +34,7 @@ front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
 mapfile = 'map.txt'
+msgfile = 'msg.txt'
 
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
@@ -80,6 +82,8 @@ class AutoNav(Node):
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
+        self.x = 0
+        self.y = 0
 
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
@@ -100,13 +104,18 @@ class AutoNav(Node):
         self.laser_range = np.array([])
 
     def odom_callback(self, msg):
-        self.get_logger().info('In odom_callback')
+        # self.get_logger().info('In odom_callback')
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
+        self.x = msg.pose.pose.position.x
+        self.y = msg.pose.pose.position.y
+        # self.get_logger().info('x: %f, y: %f' % (self.x, self.y))
+        # self.get_logger().info(str(msg))
+        # np.savetxt(msgfile, msg)
 
     def occ_callback(self, msg):
-        self.get_logger().info('In occ_callback')
+        # self.get_logger().info('In occ_callback')
         # create numpy array
         msgdata = np.array(msg.data)
         # compute histogram to identify percent of bins with -1
@@ -121,11 +130,12 @@ class AutoNav(Node):
         # reshape to 2D array using column order
         # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
         self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
+        # self.get_logger().info(str(self.occdata))
         # print to file
         np.savetxt(mapfile, self.occdata)
 
     def scan_callback(self, msg):
-        self.get_logger().info('In scan_callback')
+        # self.get_logger().info('In scan_callback')
         # create numpy array
         self.laser_range = np.array(msg.ranges)
         # print to file
@@ -190,8 +200,23 @@ class AutoNav(Node):
         self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = np.nanargmax(self.laser_range)
-            self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
+            # lr2i = np.nanargmax(self.laser_range)
+            size = len(self.occdata)
+            size1 = len(self.occdata[0])
+            middle = (int(size / 2), int(size1 / 2))
+            ref = (0, int(size1 / 2))
+            # lr2i = random.randint(0,360)
+            for i in range(0, size):
+                for j in range(0, size1):
+                    if ((self.occdata[i][j]) == 0):
+                        point = (i, j)
+                        hyp = int(math.dist(middle, point))
+                        adj = int(math.dist(middle, ref))
+                        # angle = int(math.acos(adj/hyp))
+                        lr2i = i
+
+            # lr2i = r_num
+            self.get_logger().info('Picked direction: %d %d %d %f m' % (hyp, adj, lr2i, self.laser_range[lr2i]))
         else:
             lr2i = 0
             self.get_logger().info('No data!')
@@ -231,8 +256,9 @@ class AutoNav(Node):
                 if self.laser_range.size != 0:
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
+
+                    # self.get_logger().info('Distances: %s' % str(self.laser_range[front_angles]))
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-                    # self.get_logger().info('Distances: %s' % str(lri))
 
                     # if the list is not empty
                     if (len(lri[0]) > 0):
@@ -253,6 +279,64 @@ class AutoNav(Node):
         finally:
             # stop moving
             self.stopbot()
+
+
+def closure(mapdata):
+    # This function checks if mapdata contains a closed contour. The function
+    # assumes that the raw map data from SLAM has been modified so that
+    # -1 (unmapped) is now 0, and 0 (unoccupied) is now 1, and the occupied
+    # values go from 1 to 101.
+
+    # According to: https://stackoverflow.com/questions/17479606/detect-closed-contours?rq=1
+    # closed contours have larger areas than arc length, while open contours have larger
+    # arc length than area. But in my experience, open contours can have areas larger than
+    # the arc length, but closed contours tend to have areas much larger than the arc length
+    # So, we will check for contour closure by checking if any of the contours
+    # have areas that are more than 10 times larger than the arc length
+    # This value may need to be adjusted with more testing.
+    ALTHRESH = 10
+    # We will slightly fill in the contours to make them easier to detect
+    DILATE_PIXELS = 3
+
+    # assumes mapdata is uint8 and consists of 0 (unmapped), 1 (unoccupied),
+    # and other positive values up to 101 (occupied)
+    # so we will apply a threshold of 2 to create a binary image with the
+    # occupied pixels set to 255 and everything else is set to 0
+    # we will use OpenCV's threshold function for this
+    ret, img2 = cv2.threshold(mapdata, 2, 255, 0)
+    # we will perform some erosion and dilation to fill out the contours a
+    # little bit
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (DILATE_PIXELS, DILATE_PIXELS))
+    # img3 = cv2.erode(img2,element)
+    img4 = cv2.dilate(img2, element)
+    # use OpenCV's findContours function to identify contours
+    # OpenCV version 3 changed the number of return arguments, so we
+    # need to check the version of OpenCV installed so we know which argument
+    # to grab
+    fc = cv2.findContours(img4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    (major, minor, _) = cv2.__version__.split(".")
+    if (major == '3'):
+        contours = fc[1]
+    else:
+        contours = fc[0]
+    # find number of contours returned
+    lc = len(contours)
+    # rospy.loginfo('# Contours: %s', str(lc))
+    # create array to compute ratio of area to arc length
+    cAL = np.zeros((lc, 2))
+    for i in range(lc):
+        cAL[i, 0] = cv2.contourArea(contours[i])
+        cAL[i, 1] = cv2.arcLength(contours[i], True)
+
+    # closed contours tend to have a much higher area to arc length ratio,
+    # so if there are no contours with high ratios, we can safely say
+    # there are no closed contours
+    cALratio = cAL[:, 0] / cAL[:, 1]
+    # rospy.loginfo('Closure: %s', str(cALratio))
+    if np.any(cALratio > ALTHRESH):
+        return True
+    else:
+        return False
 
 
 def main(args=None):
