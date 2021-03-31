@@ -23,16 +23,23 @@ import numpy as np
 import math
 import cmath
 import time
+import scipy.stats
+import random
 
 # constants
-rotatechange = 0.1
-speedchange = 0.05
+rotatechange = 0.5
+speedchange = 0.1
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.4
+stop_distance = 0.2
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
-mapfile = 'map.txt'
+mapfile = 'newmap.txt'
+laserfile = 'laser.txt'
+angle_array = []
+points = []
+nan_array = []
+
 
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
@@ -80,6 +87,8 @@ class AutoNav(Node):
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
+        self.x = 0
+        self.y = 0
 
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
@@ -100,21 +109,23 @@ class AutoNav(Node):
         self.laser_range = np.array([])
 
     def odom_callback(self, msg):
-        self.get_logger().info('In odom_callback')
+        # self.get_logger().info('In odom_callback')
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
+        self.x = msg.pose.pose.position.x
+        self.y = msg.pose.pose.position.y
 
     def occ_callback(self, msg):
-        self.get_logger().info('In occ_callback')
+        # self.get_logger().info('In occ_callback')
         # create numpy array
         msgdata = np.array(msg.data)
         # compute histogram to identify percent of bins with -1
-        # occ_counts = np.histogram(msgdata,occ_bins)
+        occ_counts = np.histogram(msgdata,occ_bins)
         # calculate total number of bins
-        # total_bins = msg.info.width * msg.info.height
+        total_bins = msg.info.width * msg.info.height
         # log the info
-        # self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0][0], occ_counts[0][1], occ_counts[0][2], total_bins))
+        self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0][0], occ_counts[0][1], occ_counts[0][2], total_bins))
 
         # make msgdata go from 0 instead of -1, reshape into 2D
         oc2 = msgdata + 1
@@ -125,7 +136,7 @@ class AutoNav(Node):
         np.savetxt(mapfile, self.occdata)
 
     def scan_callback(self, msg):
-        self.get_logger().info('In scan_callback')
+        # self.get_logger().info('In scan_callback')
         # create numpy array
         self.laser_range = np.array(msg.ranges)
         # print to file
@@ -188,10 +199,60 @@ class AutoNav(Node):
 
     def pick_direction(self):
         self.get_logger().info('In pick_direction')
+
+        np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = np.nanargmax(self.laser_range)
+            laser_array = self.laser_range
+            occdata = self.occdata
+
+            angle = np.nanargmax(laser_array)
+            if (angle in nan_array):
+                np.delete(laser_array, angle)
+            
+
+            # for i in range(0, 360):
+            #     if (self.laser_range[i] not in nan_array):
+            #         if (math.isnan(self.laser_range[i])):
+            #             nan_array.append(i)
+            #             lr2i = i
+
+            # for i in range(0,360):
+            #     if (math.isnan(self.laser_range[i])):
+            #         lr2i = i
+
+            # points.append([self.x, self.y, angle])
+
+            # self.get_logger().info(str(laser_array))
+            # self.get_logger().info(str(occdata))
+            # for angle in range(0,360):
+            #     for r in np.linspace(0,3,50):
+            #         x_coord = int(self.x)
+            #         y_coord = int(self.y)
+            #         if (x_coord in occdata and y_coord in occdata[0]):
+            #             y_add = int(r * math.cos(angle))
+            #             if (y_add < len(occdata[0])):
+            #                 if (occdata[r][y_add] == 0):
+            #                     lr2i = angle
+
+            # for i in range(len(points)):
+            #     if not(self.x in range(int(points[i][0])-10, int(points[i][0])+10) and self.y in range(int(points[i][1])-10, int(points[i][1])+10) and angle in range(points[i][2]-10,points[i][2]+10)):
+            #         lr2i = angle
+            #     else:
+            #         np.delete(laser_array, angle)
+            #         angle = np.nanargmax(laser_array)
+
+            lr2i = angle
+            # if (angle in angle_array):
+            #     np.delete(laser_array, angle)
+            #
+            # else:
+            #     lr2i = angle
+            #     angle_array.append(angle)
+
             self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
+            # self.get_logger().info(str(angle_array))
+
         else:
             lr2i = 0
             self.get_logger().info('No data!')
@@ -233,6 +294,20 @@ class AutoNav(Node):
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
                     # self.get_logger().info('Distances: %s' % str(lri))
+                    # for i in range(0,360):
+                    #     if (self.laser_range[i] > 3.0):
+                    #         self.stopbot()
+                    #         self.pick_direction()
+                    #         self.get_logger().info('Works')
+
+                    for i in range(0, 360):
+                        if (math.isnan(self.laser_range[i])):
+                            if (i not in nan_array):
+                                nan_array.append(i)
+                                self.stopbot()
+                                self.pick_direction()
+
+
 
                     # if the list is not empty
                     if (len(lri[0]) > 0):

@@ -205,22 +205,22 @@ class AutoNav(Node):
             # use nanargmax as there are nan's in laser_range added to replace 0's
             # lr2i = np.nanargmax(self.laser_range)
             size = len(self.occdata)
-            size1 = len(self.occdata[0])
-            middle = (int(size/2), int(size1/2))
-            ref = (0, int(size1/2))
+            # size1 = len(self.occdata[0])
+            # middle = (int(size/2), int(size1/2))
+            # ref = (0, int(size1/2))
             lr2i = random.randint(0,360)
-            for i in range(0,size):
-                for j in range(0,size1):
-                    if ((self.occdata[i][j]) == 0):
-                        print(i,j)
+            # for i in range(0,size):
+            #     for j in range(0,size1):
+            #         if ((self.occdata[i][j]) == 0):
+            #             print(i,j)
                         # point = (i, j)
                         # hyp = int(math.dist(middle, point))
                         # adj = int(math.dist(middle, ref))
                         # angle = int(math.acos(adj/hyp))
-                        # lr2i = i
+                        # lr2i = angle
 
             # lr2i = r_num
-            self.get_logger().info('Picked direction: %d %d %d %f m' % (1,1,1,self.laser_range[lr2i]))
+            self.get_logger().info('Picked direction: %d %d %d %f m' % (size,1,1,self.laser_range[lr2i]))
         else:
             lr2i = 0
             self.get_logger().info('No data!')
