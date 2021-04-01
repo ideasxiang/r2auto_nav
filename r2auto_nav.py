@@ -21,6 +21,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
 from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 import numpy as np
+import matplotlib.pyplot as plt
 import tf2_ros
 import math
 import cmath
@@ -37,7 +38,7 @@ stop_distance = 0.2
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
-mapfile = 'newmap.txt'
+mapfile = f"newmap{time.strftime('%Y%m%d%H%M%S')}.txt"
 laserfile = 'laser.txt'
 angle_array = []
 points = []
@@ -212,7 +213,13 @@ class AutoNav(Node):
 
         # rotate by 90 degrees so that the forward direction is at the top of the image
         rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
-
+        plt.xlabel('Center Y: %i Center X: %i' % (rotated.height//2, rotated.width//2))
+        plt.grid()
+        plt.imshow(rotated, cmap='gray', origin='lower')
+        plt.draw_all()
+        plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+        # pause to make sure the plot gets created
+        plt.pause(0.00000000001)
         # make msgdata go from 0 instead of -1, reshape into 2D
         oc2 = msgdata + 1
         # reshape to 2D array using column order
@@ -287,13 +294,14 @@ class AutoNav(Node):
     def pick_direction(self):
         self.get_logger().info('In pick_direction')
 
-        np.savetxt(laserfile, self.laser_range)
+        # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            laser_array = self.laser_range
-            occdata = self.occdata
+            # laser_array = self.laser_range
+            # occdata = self.occdata
 
-            angle = np.nanargmax(laser_array)
+            # angle = np.nanargmax(laser_array)
+            lr2i = np.nanargmax(self.laser_range)
             # if (angle in nan_array):
             #     np.delete(laser_array, angle)
             
@@ -329,7 +337,7 @@ class AutoNav(Node):
             #         np.delete(laser_array, angle)
             #         angle = np.nanargmax(laser_array)
 
-            lr2i = angle
+            # lr2i = angle
             # if (angle in angle_array):
             #     np.delete(laser_array, angle)
             #
@@ -378,13 +386,13 @@ class AutoNav(Node):
             while rclpy.ok():
 
                 if self.laser_range.size != 0:
-                    self.laser_count += 1
+                    # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
                     # self.get_logger().info('Distances: %s' % str(lri))
-                    laser_array.append(self.laser_range)
-                    self.get_logger().info(str((self.x, self.y)))
+                    # laser_array.append(self.laser_range)
+                    # self.get_logger().info(str((self.x, self.y)))
                     # self.get_logger().info(str(laser_array))
                     # self.get_logger().info('Laser count %d' % (self.laser_count))
                     # if (self.laser_count-10 >= 0):
