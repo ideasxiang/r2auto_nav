@@ -19,12 +19,15 @@ from geometry_msgs.msg import Twist
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
+from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 import numpy as np
+import tf2_ros
 import math
 import cmath
 import time
 import scipy.stats
 import random
+from PIL import Image
 
 # constants
 rotatechange = 0.5
@@ -39,8 +42,8 @@ laserfile = 'laser.txt'
 angle_array = []
 points = []
 nan_array = []
-
-
+laser_array = []
+map_bg_color = 1
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
 def euler_from_quaternion(x, y, z, w):
@@ -89,6 +92,9 @@ class AutoNav(Node):
         self.yaw = 0
         self.x = 0
         self.y = 0
+        self.laser_count = 0
+        self.tfBuffer = tf2_ros.Buffer()
+        self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
@@ -121,17 +127,98 @@ class AutoNav(Node):
         # create numpy array
         msgdata = np.array(msg.data)
         # compute histogram to identify percent of bins with -1
-        occ_counts = np.histogram(msgdata,occ_bins)
+        # occ_counts = np.histogram(msgdata,occ_bins)
         # calculate total number of bins
-        total_bins = msg.info.width * msg.info.height
+        # total_bins = msg.info.width * msg.info.height
         # log the info
-        self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0][0], occ_counts[0][1], occ_counts[0][2], total_bins))
+        # self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0][0], occ_counts[0][1], occ_counts[0][2], total_bins))
+
+        # compute histogram to identify bins with -1, values between 0 and below 50,
+        # and values between 50 and 100. The binned_statistic function will also
+        # return the bin numbers so we can use that easily to create the image
+        occ_counts, edges, binnum = scipy.stats.binned_statistic(msgdata, np.nan, statistic='count', bins=occ_bins)
+        # get width and height of map
+        iwidth = msg.info.width
+        iheight = msg.info.height
+        # calculate total number of bins
+        total_bins = iwidth * iheight
+        # log the info
+        # self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0], occ_counts[1], occ_counts[2], total_bins))
+
+        # find transform to obtain base_link coordinates in the map frame
+        # lookup_transform(target_frame, source_frame, time)
+        try:
+            trans = self.tfBuffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        except (LookupException, ConnectivityException, ExtrapolationException) as e:
+            self.get_logger().info('No transformation found')
+            return
+
+        cur_pos = trans.transform.translation
+        cur_rot = trans.transform.rotation
+        # self.get_logger().info('Trans: %f, %f' % (cur_pos.x, cur_pos.y))
+        # convert quaternion to Euler angles
+        roll, pitch, yaw = euler_from_quaternion(cur_rot.x, cur_rot.y, cur_rot.z, cur_rot.w)
+        # self.get_logger().info('Rot-Yaw: R: %f D: %f' % (yaw, np.degrees(yaw)))
+
+        # get map resolution
+        map_res = msg.info.resolution
+        # get map origin struct has fields of x, y, and z
+        map_origin = msg.info.origin.position
+        # get map grid positions for x, y position
+        grid_x = round((cur_pos.x - map_origin.x) / map_res)
+        grid_y = round(((cur_pos.y - map_origin.y) / map_res))
+        # self.get_logger().info('Grid Y: %i Grid X: %i' % (grid_y, grid_x))
+
+        # binnum go from 1 to 3 so we can use uint8
+        # convert into 2D array using column order
+        odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
+        # set current robot location to 0
+        odata[grid_y][grid_x] = 0
+        # create image from 2D array using PIL
+        img = Image.fromarray(odata)
+        # find center of image
+        i_centerx = iwidth / 2
+        i_centery = iheight / 2
+        # find how much to shift the image to move grid_x and grid_y to center of image
+        shift_x = round(grid_x - i_centerx)
+        shift_y = round(grid_y - i_centery)
+        # self.get_logger().info('Shift Y: %i Shift X: %i' % (shift_y, shift_x))
+
+        # pad image to move robot position to the center
+        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/ 
+        left = 0
+        right = 0
+        top = 0
+        bottom = 0
+        if shift_x > 0:
+            # pad right margin
+            right = 2 * shift_x
+        else:
+            # pad left margin
+            left = 2 * (-shift_x)
+
+        if shift_y > 0:
+            # pad bottom margin
+            bottom = 2 * shift_y
+        else:
+            # pad top margin
+            top = 2 * (-shift_y)
+
+        # create new image
+        new_width = iwidth + right + left
+        new_height = iheight + top + bottom
+        img_transformed = Image.new(img.mode, (new_width, new_height), map_bg_color)
+        img_transformed.paste(img, (left, top))
+
+        # rotate by 90 degrees so that the forward direction is at the top of the image
+        rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
 
         # make msgdata go from 0 instead of -1, reshape into 2D
         oc2 = msgdata + 1
         # reshape to 2D array using column order
         # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
-        self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
+        # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
+        self.occdata = np.array(rotated)
         # print to file
         np.savetxt(mapfile, self.occdata)
 
@@ -207,8 +294,8 @@ class AutoNav(Node):
             occdata = self.occdata
 
             angle = np.nanargmax(laser_array)
-            if (angle in nan_array):
-                np.delete(laser_array, angle)
+            # if (angle in nan_array):
+            #     np.delete(laser_array, angle)
             
 
             # for i in range(0, 360):
@@ -250,7 +337,7 @@ class AutoNav(Node):
             #     lr2i = angle
             #     angle_array.append(angle)
 
-            self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
+            # self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
             # self.get_logger().info(str(angle_array))
 
         else:
@@ -289,23 +376,44 @@ class AutoNav(Node):
             self.pick_direction()
 
             while rclpy.ok():
+
                 if self.laser_range.size != 0:
+                    self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
                     # self.get_logger().info('Distances: %s' % str(lri))
-                    # for i in range(0,360):
-                    #     if (self.laser_range[i] > 3.0):
-                    #         self.stopbot()
-                    #         self.pick_direction()
-                    #         self.get_logger().info('Works')
+                    laser_array.append(self.laser_range)
+                    self.get_logger().info(str((self.x, self.y)))
+                    # self.get_logger().info(str(laser_array))
+                    # self.get_logger().info('Laser count %d' % (self.laser_count))
+                    # if (self.laser_count-10 >= 0):
+                    #     prev_laser = laser_array[self.laser_count-10]
+                    #     self.get_logger().info('Prev at 90 degress %f' % (prev_laser[90]))
+                    #     for i in range(0,360):
+                    #         if (math.isnan(self.laser_range[i])):
+                    #             if not (math.isnan(prev_laser[i])):
+                    #                 self.get_logger().info('First Works')
+                    #                 # self.stopbot()
+                    #                 # self.pick_direction()
+                    #
+                    #         else:
+                    #             if not math.isnan(prev_laser[i]):
+                    #                 if (self.laser_range[i] - prev_laser[i]) > 2.0:
+                    #                     self.get_logger().info('Second Works')
+                    #                     self.stopbot()
+                    #                     self.pick_direction()
 
-                    for i in range(0, 360):
-                        if (math.isnan(self.laser_range[i])):
-                            if (i not in nan_array):
-                                nan_array.append(i)
-                                self.stopbot()
-                                self.pick_direction()
+
+
+                    # self.get_logger().info('Distance at 90 degress %f' % (self.laser_range[90]))
+
+                    # for i in range(0, 360):
+                    #     if (math.isnan(self.laser_range[i])):
+                    #         if (i not in nan_array):
+                    #             nan_array.append(i)
+                    #             self.stopbot()
+                    #             self.pick_direction()
 
 
 
@@ -332,6 +440,7 @@ class AutoNav(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+
 
     auto_nav = AutoNav()
     auto_nav.mover()
