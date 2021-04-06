@@ -28,13 +28,13 @@ import cmath
 import time
 import scipy.stats
 import random
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # constants
 rotatechange = 0.5
 speedchange = 0.1
-occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.2
+occ_bins = [-1, 0, 70, 100]
+stop_distance = 0.5
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -93,6 +93,13 @@ class AutoNav(Node):
         self.yaw = 0
         self.x = 0
         self.y = 0
+        self.center_x = 0
+        self.center_y = 0
+        self.unmap_x = 0
+        self.unmap_y = 0
+        self.dist_x = 0
+        self.dist_y = 0
+        self.angle_to_unmap = 0
         self.laser_count = 0
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
@@ -213,11 +220,18 @@ class AutoNav(Node):
 
         # rotate by 90 degrees so that the forward direction is at the top of the image
         rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
-        plt.xlabel('Center Y: %i Center X: %i' % (rotated.height//2, rotated.width//2))
+
+        self.center_x = rotated.width//2
+        self.center_y = rotated.height//2
+
+        plt.xlabel('Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: %f degrees' %
+                   (rotated.width//2, rotated.height//2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y, self.angle_to_unmap * (180/math.pi)))
         plt.grid()
+        plt.plot(self.unmap_x, self.unmap_y, 'rx')
         plt.imshow(rotated, cmap='gray', origin='lower')
         plt.draw_all()
         plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+        plt.cla()
         # pause to make sure the plot gets created
         plt.pause(0.00000000001)
         # make msgdata go from 0 instead of -1, reshape into 2D
@@ -296,12 +310,16 @@ class AutoNav(Node):
 
         # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
+            lr2i = np.nanargmax(self.laser_range)
+            if self.angle_to_unmap != 0:
+                lr2i = self.angle_to_unmap
+
             # use nanargmax as there are nan's in laser_range added to replace 0's
             # laser_array = self.laser_range
             # occdata = self.occdata
 
             # angle = np.nanargmax(laser_array)
-            lr2i = np.nanargmax(self.laser_range)
+            # lr2i = np.nanargmax(self.laser_range)
             # if (angle in nan_array):
             #     np.delete(laser_array, angle)
             
@@ -365,6 +383,8 @@ class AutoNav(Node):
         time.sleep(1)
         self.publisher_.publish(twist)
 
+
+
     def stopbot(self):
         self.get_logger().info('In stopbot')
         # publish to cmd_vel to move TurtleBot
@@ -390,6 +410,38 @@ class AutoNav(Node):
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+
+                    occdata = self.occdata
+                    for i in range(0, np.size(occdata, 0)):
+                        for j in range(0, np.size(occdata, 1)):
+                            if (i + 1 < occdata.shape[0] and i > 0 and j + 1 < occdata.shape[1] and j > 0):
+                                if (occdata[i][j] == 1 and (occdata[i + 1][j] == 2)):
+                                    self.unmap_x = i
+                                    self.unmap_y = j
+
+                                    unmap_x = self.unmap_x
+                                    unmap_y = self.unmap_y
+
+                                    our_x = self.center_x
+                                    our_y = self.center_y
+
+                                    x_dist = math.dist((unmap_x, 0), (our_x, 0))
+                                    y_dist = math.dist((0, unmap_y), (0, our_y))
+
+                                    x_negative = unmap_x - our_x
+                                    y_negative = unmap_y - our_y
+
+                                    self.dist_x = x_dist
+                                    self.dist_y = y_dist
+
+                                    if (x_dist != 0):
+                                        angle_to_unmap = math.atan(y_dist / x_dist)
+                                        self.angle_to_unmap = angle_to_unmap
+                        # self.get_logger().info('Angle chosen %f' % angle_to_unmap)
+
+                    # self.get_logger().info('Unmap X: %i, Unmap Y: %i, Ours X: %i, Ours Y: %i' % (unmap_x, unmap_y, our_x, our_y))
+                    # self.get_logger().info('Dist X: %i, Dist Y: %i' % (x_dist, y_dist))
+
                     # self.get_logger().info('Distances: %s' % str(lri))
                     # laser_array.append(self.laser_range)
                     # self.get_logger().info(str((self.x, self.y)))

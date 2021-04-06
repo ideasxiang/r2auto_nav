@@ -29,7 +29,7 @@ import random
 rotatechange = 0.5
 speedchange = 0.1
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.2
+stop_distance = 0.45
 front_angle = 30
 front_angles = range(-front_angle,front_angle+1,1)
 scanfile = 'lidar.txt'
@@ -203,12 +203,19 @@ class AutoNav(Node):
         self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            # lr2i = np.nanargmax(self.laser_range)
-            size = len(self.occdata)
+            lr2i = np.nanargmax(self.laser_range)
+
+            # for i in range(0, 360):
+            #     if (self.laser_range[i] not in nan_array):
+            #         if (math.isnan(self.laser_range[i])):
+            #             nan_array.append(i)
+            #             lr2i = i
+
+            # size = len(self.occdata)
             # size1 = len(self.occdata[0])
             # middle = (int(size/2), int(size1/2))
             # ref = (0, int(size1/2))
-            lr2i = random.randint(0,360)
+            # lr2i = random.randint(0,360)
             # for i in range(0,size):
             #     for j in range(0,size1):
             #         if ((self.occdata[i][j]) == 0):
@@ -220,7 +227,7 @@ class AutoNav(Node):
                         # lr2i = angle
 
             # lr2i = r_num
-            self.get_logger().info('Picked direction: %d %d %d %f m' % (size,1,1,self.laser_range[lr2i]))
+            # self.get_logger().info('Picked direction: %d %d %d %f m' % (self.laser_range[lr2i]))
         else:
             lr2i = 0
             self.get_logger().info('No data!')
