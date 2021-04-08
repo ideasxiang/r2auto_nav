@@ -33,7 +33,7 @@ from PIL import Image, ImageDraw
 # constants
 rotatechange = 0.5
 speedchange = 0.1
-occ_bins = [-1, 0, 50, 100]
+occ_bins = [-1, 0, 60, 100]
 stop_distance = 0.5
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
@@ -194,7 +194,7 @@ class AutoNav(Node):
         # self.get_logger().info('Shift Y: %i Shift X: %i' % (shift_y, shift_x))
 
         # pad image to move robot position to the center
-        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/ 
+        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/
         left = 0
         right = 0
         top = 0
@@ -225,53 +225,12 @@ class AutoNav(Node):
         self.center_x = rotated.width // 2
         self.center_y = rotated.height // 2
 
-        # make msgdata go from 0 instead of -1, reshape into 2D
-        oc2 = msgdata + 1
-        # reshape to 2D array using column order
-        # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
-        # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
-        self.occdata = np.array(rotated)
-        for i in range(1, np.size(self.occdata, 0)-1):
-            for j in range(1, np.size(self.occdata, 1)-1):
-                # self.get_logger().info(str(self.occdata[i, j]))
-                if self.occdata[i, j] == 1 and self.occdata[i, j-1] == 1 and self.occdata[i, j+1] == 1 and self.occdata[i+1, j-1] == 2 and self.occdata[i+1, j+1] == 2 and self.occdata[i+1, j] == 2:
-                    # self.get_logger().info('%d %d %d' % (
-                    # self.occdata[i, j], self.occdata[i - 1, j], self.occdata[i + 1, j]))
-                    self.unmap_x = j
-                    self.unmap_y = i
-        unmap_x = self.unmap_x
-        unmap_y = self.unmap_y
-        self.get_logger().info('%d %d' % (unmap_x, unmap_y))
-
-        our_x = self.center_x
-        our_y = self.center_y
-
-        x_dist = math.dist((unmap_x, 0), (our_x, 0))
-        y_dist = math.dist((0, unmap_y), (0, our_y))
-
-        x_negative = unmap_x > our_x
-        y_negative = unmap_y > our_y
-
-        self.dist_x = x_dist
-        self.dist_y = y_dist
-
-        if x_dist != 0:
-            angle_to_unmap = math.atan(y_dist / x_dist)
-            # if x_negative and y_negative:
-            #     self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
-            # elif x_negative and (not y_negative):
-            #     self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
-            # elif not x_negative and y_negative:
-            #     self.angle_to_unmap = (angle_to_unmap + (3 * math.pi) / 2) * 180 / math.pi
-            # else:
-            self.angle_to_unmap = angle_to_unmap * 180 / math.pi
-
         plt.xlabel(
-            'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
-            '%f degrees' %
+            'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: %f degrees' %
             (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
-             self.angle_to_unmap))
+             self.angle_to_unmap * (180 / math.pi)))
         plt.grid()
+
         plt.plot(self.unmap_x, self.unmap_y, 'rx')
         plt.imshow(rotated, cmap='gray', origin='lower')
         plt.draw_all()
@@ -279,11 +238,17 @@ class AutoNav(Node):
         plt.cla()
         # pause to make sure the plot gets created
         plt.pause(0.00000000001)
+        # make msgdata go from 0 instead of -1, reshape into 2D
+        oc2 = msgdata + 1
+        # reshape to 2D array using column order
+        # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
+        # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
+        self.occdata = np.array(rotated)
         # print to file
         np.savetxt(mapfile, self.occdata)
 
     def scan_callback(self, msg):
-        # self.get_logger().info('In scan_callback')
+        self.get_logger().info('In scan_callback')
         # create numpy array
         self.laser_range = np.array(msg.ranges)
         # print to file
@@ -347,61 +312,74 @@ class AutoNav(Node):
     def pick_direction(self):
         self.get_logger().info('In pick_direction')
 
-        # np.savetxt(laserfile, self.laser_range)
+
+        # if not np.empty(self.occdata):
+        #     occdata = self.occdata
+        #     self.get_logger().info('in new code' + str(occdata))
+        #     self.get_logger().info('in new 2 code')
+        #     for i in range(np.size(occdata, 0)):
+        #         for j in range(np.size(occdata, 1)):
+        #             if (occdata[i][j] == 2):
+        #                 if (self.Uboarder(i, j, occdata) == False):
+        #                     occdata[i][j] = list(occdata[i][j]) + ['U']
+        #
+        #                 if (self.Dboarder(i, j, occdata) == False):
+        #                     occdata[i][j] = list(occdata[i][j]) + ['D']
+        #
+        #                 if (self.Rboarder(i, j, occdata) == False):
+        #                     occdata[i][j] = list(occdata[i][j]) + ['R']
+        #
+        #                 if (self.Dboarder(i, j, occdata) == False):
+        #                     occdata[i][j] = list(occdata[i][j]) + ['L']
+        #
+        #     for i in range(np.size(occdata, 0)):
+        #         for j in range(np.size(occdata, 1)):
+        #             if (self.Uboarder(i, j, occdata) == True & self.Dboarder(i, j, occdata) == True & self.Rboarder(i, j,
+        #                                                                                                             occdata) == True & self.Lboarder(
+        #                     i, j, occdata) == True):
+        #                 occdata[i][j] = list(occdata[i][j]) + ['P']
+        #
+        #     for i in range(np.size(occdata, 0)):
+        #         for j in range(np.size(occdata, 1)):
+        #             if (occdata[i][j][1] != 'P'):
+        #                 occdata = self.rmUDLR(i, j, occdata)
+        #
+        #     for i in range(np.size(occdata, 0)):
+        #         for j in range(np.size(occdata, 1)):
+        #             if (len(occdata[i][j]) == 1):
+        #                 occdata[i][j] = occdata[i][j] + ['P']
+        #
+        #     for i in range(np.size(occdata, 0)):
+        #         for j in range(np.size(occdata, 1)):
+        #             if (occdata[i][j][1] != 'P'):
+        #                 self.unmap_x = i
+        #                 self.unmap_y = j
+        #
+        # # np.savetxt(laserfile, self.laser_range)
+        # # self.get_logger().info(self.laser_range.size)
+        #
+        # lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+        #
+        # unmap_x = self.unmap_x
+        # unmap_y = self.unmap_y
+        #
+        # our_x = self.center_x
+        # our_y = self.center_y
+        #
+        # x_dist = math.dist((unmap_x, 0), (our_x, 0))
+        # y_dist = math.dist((0, unmap_y), (0, our_y))
+        # self.dist_x = x_dist
+        # self.dist_y = y_dist
+        #
+        # if (x_dist != 0):
+        #     angle_to_unmap = math.atan(y_dist / x_dist)
+        #     self.angle_to_unmap = angle_to_unmap
+        #     self.get_logger().info('Angle chosen %f' % angle_to_unmap)
+
         if self.laser_range.size != 0:
-
-            lr2i = self.angle_to_unmap
-
-            # use nanargmax as there are nan's in laser_range added to replace 0's
-            # laser_array = self.laser_range
-            # occdata = self.occdata
-
-            # angle = np.nanargmax(laser_array)
-            # lr2i = np.nanargmax(self.laser_range)
-            # if (angle in nan_array):
-            #     np.delete(laser_array, angle)
-
-            # for i in range(0, 360):
-            #     if (self.laser_range[i] not in nan_array):
-            #         if (math.isnan(self.laser_range[i])):
-            #             nan_array.append(i)
-            #             lr2i = i
-
-            # for i in range(0,360):
-            #     if (math.isnan(self.laser_range[i])):
-            #         lr2i = i
-
-            # points.append([self.x, self.y, angle])
-
-            # self.get_logger().info(str(laser_array))
-            # self.get_logger().info(str(occdata))
-            # for angle in range(0,360):
-            #     for r in np.linspace(0,3,50):
-            #         x_coord = int(self.x)
-            #         y_coord = int(self.y)
-            #         if (x_coord in occdata and y_coord in occdata[0]):
-            #             y_add = int(r * math.cos(angle))
-            #             if (y_add < len(occdata[0])):
-            #                 if (occdata[r][y_add] == 0):
-            #                     lr2i = angle
-
-            # for i in range(len(points)):
-            #     if not(self.x in range(int(points[i][0])-10, int(points[i][0])+10) and self.y in range(int(points[i][1])-10, int(points[i][1])+10) and angle in range(points[i][2]-10,points[i][2]+10)):
-            #         lr2i = angle
-            #     else:
-            #         np.delete(laser_array, angle)
-            #         angle = np.nanargmax(laser_array)
-
-            # lr2i = angle
-            # if (angle in angle_array):
-            #     np.delete(laser_array, angle)
-            #
-            # else:
-            #     lr2i = angle
-            #     angle_array.append(angle)
-
-            # self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
-            # self.get_logger().info(str(angle_array))
+            lr2i = np.nanargmax(self.laser_range)
+            if self.angle_to_unmap != 0:
+                lr2i = self.angle_to_unmap
 
         else:
             lr2i = 0
@@ -429,6 +407,49 @@ class AutoNav(Node):
         # time.sleep(1)
         self.publisher_.publish(twist)
 
+    # ______________________________________________________________________________
+    def Uboarder(self, x, y, occdata):
+
+        for i in range(0, x):
+            if (occdata[i][y] == 3): return False
+        return True
+
+    def Dboarder(self, x, y, occdata):
+        for i in range(x, np.size(occdata, 0)):
+            if (occdata[i][y] == 3): return False
+        return True
+
+    def Lboarder(self, x, y, occdata):
+        for j in range(0, y):
+            if (occdata[x][j] == 3): return False
+        return True
+
+    def Rboarder(self, x, y, occdata):
+        for j in range(y, np.size(occdata, 1)):
+            if (occdata[x][j] == 3): return False
+        return True
+
+    def rmUDLR(self, x, y, occdata):
+        # remove D
+        for p in range(len(occdata[x + 1][y])):
+            if (occdata[x + 1][y][p] == 'D'):  occdata[x][y].remove('D')
+
+        # remove U
+        for p in range(len(occdata[x - 1][y])):
+            if (x >= 1 & (occdata[x - 1][y][p] == 'U')):  occdata[x][y].remove('U')
+
+        # remove R
+        for p in range(len(occdata[x][y + 1])):
+            if (occdata[x][y + 1][p] == 'R'):  occdata[x][y].remove('R')
+
+            # remove L
+        for p in range(len(occdata[x][y - 1])):
+            if (y >= 1 & (occdata[x][y - 1][p] == 'L')):  occdata[x][y].remove('L')
+
+        return occdata
+
+    # ___________________________________________________________________________________
+
     def mover(self):
         try:
             # initialize variable to write elapsed time to file
@@ -440,47 +461,30 @@ class AutoNav(Node):
 
             while rclpy.ok():
 
-                if self.laser_range.size != 0:
+                if (self.laser_range.size != 0):
                     # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
 
-                    # self.get_logger().info('Angle chosen %f' % angle_to_unmap)
+                    # unmap_x = self.unmap_x
+                    # unmap_y = self.unmap_y
+                    #
+                    # our_x = self.center_x
+                    # our_y = self.center_y
+                    #
+                    # x_dist = math.dist((unmap_x, 0), (our_x, 0))
+                    # y_dist = math.dist((0, unmap_y), (0, our_y))
+                    # self.dist_x = x_dist
+                    # self.dist_y = y_dist
+                    #
+                    # if (x_dist != 0):
+                    #     angle_to_unmap = math.atan(y_dist / x_dist)
+                    #     self.angle_to_unmap = angle_to_unmap
+                    #     self.get_logger().info('Angle chosen %f' % angle_to_unmap)
 
                     # self.get_logger().info('Unmap X: %i, Unmap Y: %i, Ours X: %i, Ours Y: %i' % (unmap_x, unmap_y, our_x, our_y))
                     # self.get_logger().info('Dist X: %i, Dist Y: %i' % (x_dist, y_dist))
-
-                    # self.get_logger().info('Distances: %s' % str(lri))
-                    # laser_array.append(self.laser_range)
-                    # self.get_logger().info(str((self.x, self.y)))
-                    # self.get_logger().info(str(laser_array))
-                    # self.get_logger().info('Laser count %d' % (self.laser_count))
-                    # if (self.laser_count-10 >= 0):
-                    #     prev_laser = laser_array[self.laser_count-10]
-                    #     self.get_logger().info('Prev at 90 degress %f' % (prev_laser[90]))
-                    #     for i in range(0,360):
-                    #         if (math.isnan(self.laser_range[i])):
-                    #             if not (math.isnan(prev_laser[i])):
-                    #                 self.get_logger().info('First Works')
-                    #                 # self.stopbot()
-                    #                 # self.pick_direction()
-                    #
-                    #         else:
-                    #             if not math.isnan(prev_laser[i]):
-                    #                 if (self.laser_range[i] - prev_laser[i]) > 2.0:
-                    #                     self.get_logger().info('Second Works')
-                    #                     self.stopbot()
-                    #                     self.pick_direction()
-
-                    # self.get_logger().info('Distance at 90 degress %f' % (self.laser_range[90]))
-
-                    # for i in range(0, 360):
-                    #     if (math.isnan(self.laser_range[i])):
-                    #         if (i not in nan_array):
-                    #             nan_array.append(i)
-                    #             self.stopbot()
-                    #             self.pick_direction()
 
                     # if the list is not empty
                     if (len(lri[0]) > 0):

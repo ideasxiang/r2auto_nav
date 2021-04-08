@@ -29,12 +29,14 @@ import random
 rotatechange = 0.5
 speedchange = 0.1
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.45
+stop_distance = 0.5
+max_distance = 1.2
 front_angle = 30
-front_angles = range(-front_angle,front_angle+1,1)
+front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
 mapfile = 'map.txt'
 msgfile = 'msg.txt'
+
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
 def euler_from_quaternion(x, y, z, w):
@@ -57,17 +59,18 @@ def euler_from_quaternion(x, y, z, w):
     t4 = +1.0 - 2.0 * (y * y + z * z)
     yaw_z = math.atan2(t3, t4)
 
-    return roll_x, pitch_y, yaw_z # in radians
+    return roll_x, pitch_y, yaw_z  # in radians
+
 
 class AutoNav(Node):
 
     def __init__(self):
         super().__init__('auto_nav')
-        
+
         # create publisher for moving TurtleBot
-        self.publisher_ = self.create_publisher(Twist,'cmd_vel',10)
+        self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.get_logger().info('Created publisher')
-        
+
         # create subscription to track orientation
         self.odom_subscription = self.create_subscription(
             Odometry,
@@ -82,7 +85,7 @@ class AutoNav(Node):
         self.yaw = 0
         self.x = 0
         self.y = 0
-        
+
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
             OccupancyGrid,
@@ -91,7 +94,7 @@ class AutoNav(Node):
             qos_profile_sensor_data)
         self.occ_subscription  # prevent unused variable warning
         self.occdata = np.array([])
-        
+
         # create subscription to track lidar
         self.scan_subscription = self.create_subscription(
             LaserScan,
@@ -101,18 +104,16 @@ class AutoNav(Node):
         self.scan_subscription  # prevent unused variable warning
         self.laser_range = np.array([])
 
-
     def odom_callback(self, msg):
         # self.get_logger().info('In odom_callback')
-        orientation_quat =  msg.pose.pose.orientation
-        self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y, orientation_quat.z, orientation_quat.w)
+        orientation_quat = msg.pose.pose.orientation
+        self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
+                                                                orientation_quat.z, orientation_quat.w)
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
-        self.get_logger().info('x: %f, y: %f' % (self.x, self.y))
+        # self.get_logger().info('x: %f, y: %f' % (self.x, self.y))
         # self.get_logger().info(str(msg))
         # np.savetxt(msgfile, msg)
-
-
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
@@ -129,39 +130,37 @@ class AutoNav(Node):
         oc2 = msgdata + 1
         # reshape to 2D array using column order
         # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
-        self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width))
+        self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
         # self.get_logger().info(str(self.occdata))
         # print to file
         np.savetxt(mapfile, self.occdata)
-
 
     def scan_callback(self, msg):
         # self.get_logger().info('In scan_callback')
         # create numpy array
         self.laser_range = np.array(msg.ranges)
         # print to file
-        #np.savetxt(scanfile, self.laser_range)
+        # np.savetxt(scanfile, self.laser_range)
         # replace 0's with nan
-        self.laser_range[self.laser_range==0] = np.nan
-
+        self.laser_range[self.laser_range == 0] = np.nan
 
     # function to rotate the TurtleBot
     def rotatebot(self, rot_angle):
         self.get_logger().info('In rotatebot')
         # create Twist object
         twist = Twist()
-        
+
         # get current yaw angle
         current_yaw = self.yaw
         # log the info
         self.get_logger().info('Current: %f' % math.degrees(current_yaw))
         # we are going to use complex numbers to avoid problems when the angles go from
         # 360 to 0, or from -180 to 180
-        c_yaw = complex(math.cos(current_yaw),math.sin(current_yaw))
+        c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
         # calculate desired yaw
         target_yaw = current_yaw + math.radians(rot_angle)
         # convert to complex notation
-        c_target_yaw = complex(math.cos(target_yaw),math.sin(target_yaw))
+        c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
         self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
         # divide the two complex numbers to get the change in direction
         c_change = c_target_yaw / c_yaw
@@ -179,12 +178,12 @@ class AutoNav(Node):
         # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
         # if the rotation direction was 1.0, then we will want to stop when the c_dir_diff
         # becomes -1.0, and vice versa
-        while(c_change_dir * c_dir_diff > 0):
+        while (c_change_dir * c_dir_diff > 0):
             # allow the callback functions to run
             rclpy.spin_once(self)
             current_yaw = self.yaw
             # convert the current yaw to complex form
-            c_yaw = complex(math.cos(current_yaw),math.sin(current_yaw))
+            c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
             # self.get_logger().info('Current Yaw: %f' % math.degrees(current_yaw))
             # get difference in angle between current and target
             c_change = c_target_yaw / c_yaw
@@ -198,12 +197,17 @@ class AutoNav(Node):
         # stop the rotation
         self.publisher_.publish(twist)
 
-
     def pick_direction(self):
         self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = np.nanargmax(self.laser_range)
+            # if 0 <= int(self.x) < len(past_angles) and 0 <= int(self.y) < len(past_angles[0]):
+            #     if np.nanargmax(self.laser_range) not in past_angles[int(self.x)][int(self.y)]:
+            #         past_angles[int(self.x)][int(self.y)].append(np.nanargmax(self.laser_range))
+            #         lr2i = np.nanargmax(self.laser_range)
+            # else:
+            #     lr2i = 0
+            lr2i = 359
 
             # for i in range(0, 360):
             #     if (self.laser_range[i] not in nan_array):
@@ -220,11 +224,11 @@ class AutoNav(Node):
             #     for j in range(0,size1):
             #         if ((self.occdata[i][j]) == 0):
             #             print(i,j)
-                        # point = (i, j)
-                        # hyp = int(math.dist(middle, point))
-                        # adj = int(math.dist(middle, ref))
-                        # angle = int(math.acos(adj/hyp))
-                        # lr2i = angle
+            # point = (i, j)
+            # hyp = int(math.dist(middle, point))
+            # adj = int(math.dist(middle, ref))
+            # angle = int(math.acos(adj/hyp))
+            # lr2i = angle
 
             # lr2i = r_num
             # self.get_logger().info('Picked direction: %d %d %d %f m' % (self.laser_range[lr2i]))
@@ -245,7 +249,6 @@ class AutoNav(Node):
         time.sleep(1)
         self.publisher_.publish(twist)
 
-
     def stopbot(self):
         self.get_logger().info('In stopbot')
         # publish to cmd_vel to move TurtleBot
@@ -254,7 +257,6 @@ class AutoNav(Node):
         twist.angular.z = 0.0
         # time.sleep(1)
         self.publisher_.publish(twist)
-
 
     def mover(self):
         try:
@@ -274,26 +276,26 @@ class AutoNav(Node):
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
 
                     # if the list is not empty
-                    if(len(lri[0])>0):
+                    if len(lri[0]) > 0:
                         # stop moving
                         self.stopbot()
                         # find direction with the largest distance from the Lidar
                         # rotate to that direction
                         # start moving
                         self.pick_direction()
-                    
+
                 # allow the callback functions to run
                 rclpy.spin_once(self)
 
         except Exception as e:
             print(e)
-        
+
         # Ctrl-c detected
         finally:
             # stop moving
             self.stopbot()
-            
-            
+
+
 def closure(mapdata):
     # This function checks if mapdata contains a closed contour. The function
     # assumes that the raw map data from SLAM has been modified so that
@@ -316,19 +318,19 @@ def closure(mapdata):
     # so we will apply a threshold of 2 to create a binary image with the
     # occupied pixels set to 255 and everything else is set to 0
     # we will use OpenCV's threshold function for this
-    ret,img2 = cv2.threshold(mapdata,2,255,0)
+    ret, img2 = cv2.threshold(mapdata, 2, 255, 0)
     # we will perform some erosion and dilation to fill out the contours a
     # little bit
-    element = cv2.getStructuringElement(cv2.MORPH_CROSS,(DILATE_PIXELS,DILATE_PIXELS))
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (DILATE_PIXELS, DILATE_PIXELS))
     # img3 = cv2.erode(img2,element)
-    img4 = cv2.dilate(img2,element)
+    img4 = cv2.dilate(img2, element)
     # use OpenCV's findContours function to identify contours
     # OpenCV version 3 changed the number of return arguments, so we
     # need to check the version of OpenCV installed so we know which argument
     # to grab
     fc = cv2.findContours(img4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     (major, minor, _) = cv2.__version__.split(".")
-    if(major == '3'):
+    if (major == '3'):
         contours = fc[1]
     else:
         contours = fc[0]
@@ -336,15 +338,15 @@ def closure(mapdata):
     lc = len(contours)
     # rospy.loginfo('# Contours: %s', str(lc))
     # create array to compute ratio of area to arc length
-    cAL = np.zeros((lc,2))
+    cAL = np.zeros((lc, 2))
     for i in range(lc):
-        cAL[i,0] = cv2.contourArea(contours[i])
-        cAL[i,1] = cv2.arcLength(contours[i], True)
+        cAL[i, 0] = cv2.contourArea(contours[i])
+        cAL[i, 1] = cv2.arcLength(contours[i], True)
 
     # closed contours tend to have a much higher area to arc length ratio,
     # so if there are no contours with high ratios, we can safely say
     # there are no closed contours
-    cALratio = cAL[:,0]/cAL[:,1]
+    cALratio = cAL[:, 0] / cAL[:, 1]
     # rospy.loginfo('Closure: %s', str(cALratio))
     if np.any(cALratio > ALTHRESH):
         return True
