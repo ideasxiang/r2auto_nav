@@ -34,7 +34,7 @@ from PIL import Image, ImageDraw
 rotatechange = 0.5
 speedchange = 0.1
 occ_bins = [-1, 0, 50, 100]
-stop_distance = 0.5
+stop_distance = 0.55
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -101,7 +101,10 @@ class AutoNav(Node):
         self.dist_x = 0
         self.dist_y = 0
         self.angle_to_unmap = 0
+        self.dist_to_unmap = 0
+        self.prev_dist_to_unmap = []
         self.laser_count = 0
+        self.why_stop = 0
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
@@ -234,14 +237,22 @@ class AutoNav(Node):
         for i in range(1, np.size(self.occdata, 0)-1):
             for j in range(1, np.size(self.occdata, 1)-1):
                 # self.get_logger().info(str(self.occdata[i, j]))
-                if self.occdata[i, j] == 1 and self.occdata[i, j-1] == 1 and self.occdata[i, j+1] == 1 and self.occdata[i+1, j-1] == 2 and self.occdata[i+1, j+1] == 2 and self.occdata[i+1, j] == 2:
-                    # self.get_logger().info('%d %d %d' % (
-                    # self.occdata[i, j], self.occdata[i - 1, j], self.occdata[i + 1, j]))
+                if self.occdata[i, j] == 1 and self.occdata[i+1, j] == 2 and self.occdata[i, j+1] == 3:
+                    self.get_logger().info('%d %d %d' % (self.occdata[i, j], self.occdata[i + 1, j], self.occdata[i, j+1]))
                     self.unmap_x = j
                     self.unmap_y = i
+
+        # prev_unmap_x = self.unmap_x
+        # prev_unmap_y = self.unmap_y
+        #
+        # if prev_unmap_x == self.unmap_x:
+        #     self.unmap_x = 0
+        # if prev_unmap_y == self.unmap_y:
+        #     self.unmap_y = 0
+
         unmap_x = self.unmap_x
         unmap_y = self.unmap_y
-        self.get_logger().info('%d %d' % (unmap_x, unmap_y))
+        # self.get_logger().info('%d %d' % (unmap_x, unmap_y))
 
         our_x = self.center_x
         our_y = self.center_y
@@ -249,28 +260,30 @@ class AutoNav(Node):
         x_dist = math.dist((unmap_x, 0), (our_x, 0))
         y_dist = math.dist((0, unmap_y), (0, our_y))
 
-        x_negative = unmap_x > our_x
-        y_negative = unmap_y > our_y
+        x_negative = our_x > unmap_x
+        y_negative = our_y > unmap_y
 
         self.dist_x = x_dist
         self.dist_y = y_dist
+        self.dist_to_unmap = math.dist((unmap_x, unmap_y), (our_x, our_y))
+        self.prev_dist_to_unmap.append(self.dist_to_unmap)
 
         if x_dist != 0:
             angle_to_unmap = math.atan(y_dist / x_dist)
-            # if x_negative and y_negative:
-            #     self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
-            # elif x_negative and (not y_negative):
-            #     self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
-            # elif not x_negative and y_negative:
-            #     self.angle_to_unmap = (angle_to_unmap + (3 * math.pi) / 2) * 180 / math.pi
-            # else:
-            self.angle_to_unmap = angle_to_unmap * 180 / math.pi
+            if x_negative and y_negative:
+                self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
+            elif x_negative and (not y_negative):
+                self.angle_to_unmap = (angle_to_unmap - math.pi / 2) * 180 / math.pi
+            elif not x_negative and y_negative:
+                self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
+            else:
+                self.angle_to_unmap = angle_to_unmap * 180 / math.pi
 
         plt.xlabel(
             'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
-            '%f degrees' %
+            '%f degrees Distance to unmap: %i' %
             (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
-             self.angle_to_unmap))
+             self.angle_to_unmap, self.dist_to_unmap))
         plt.grid()
         plt.plot(self.unmap_x, self.unmap_y, 'rx')
         plt.imshow(rotated, cmap='gray', origin='lower')
@@ -350,7 +363,13 @@ class AutoNav(Node):
         # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
 
-            lr2i = self.angle_to_unmap
+            if self.why_stop == 1:
+                lr2i = -45
+                self.why_stop = 0
+
+            if self.why_stop == 2:
+                lr2i = self.angle_to_unmap
+                self.why_stop = 0
 
             # use nanargmax as there are nan's in laser_range added to replace 0's
             # laser_array = self.laser_range
@@ -446,6 +465,12 @@ class AutoNav(Node):
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
 
+                    if len(self.prev_dist_to_unmap) != 0:
+                        if self.dist_to_unmap > self.prev_dist_to_unmap[len(self.prev_dist_to_unmap)-1]:
+                            self.why_stop = 1
+                            self.stopbot()
+                            self.pick_direction()
+
                     # self.get_logger().info('Angle chosen %f' % angle_to_unmap)
 
                     # self.get_logger().info('Unmap X: %i, Unmap Y: %i, Ours X: %i, Ours Y: %i' % (unmap_x, unmap_y, our_x, our_y))
@@ -484,6 +509,7 @@ class AutoNav(Node):
 
                     # if the list is not empty
                     if (len(lri[0]) > 0):
+                        self.why_stop = 2
                         # stop moving
                         self.stopbot()
                         # find direction with the largest distance from the Lidar

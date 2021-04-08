@@ -207,7 +207,13 @@ class AutoNav(Node):
             #         lr2i = np.nanargmax(self.laser_range)
             # else:
             #     lr2i = 0
-            lr2i = 359
+            # angle = 0
+            # for i in range(0,360):
+            #     if np.isnan(self.laser_range[i]):
+            #         angle = i
+            # lr2i = angle
+
+            lr2i = 5 + random.randint(0,15)
 
             # for i in range(0, 360):
             #     if (self.laser_range[i] not in nan_array):
@@ -231,7 +237,7 @@ class AutoNav(Node):
             # lr2i = angle
 
             # lr2i = r_num
-            # self.get_logger().info('Picked direction: %d %d %d %f m' % (self.laser_range[lr2i]))
+            self.get_logger().info('Picked direction: %d' % lr2i)
         else:
             lr2i = 0
             self.get_logger().info('No data!')
