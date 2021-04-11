@@ -14,6 +14,7 @@
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from rclpy.qos import qos_profile_sensor_data
@@ -45,6 +46,7 @@ points = []
 nan_array = []
 laser_array = []
 map_bg_color = 1
+random_angle = [0, -90, 90, 180]
 
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
@@ -78,6 +80,7 @@ class AutoNav(Node):
 
         # create publisher for moving TurtleBot
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.fly_ = self.create_publisher(String, 'fly', 11)
         self.get_logger().info('Created publisher')
 
         # create subscription to track orientation
@@ -238,7 +241,7 @@ class AutoNav(Node):
             for j in range(1, np.size(self.occdata, 1)-1):
                 # self.get_logger().info(str(self.occdata[i, j]))
                 if self.occdata[i, j] == 1 and self.occdata[i+1, j] == 2 and self.occdata[i, j+1] == 3:
-                    self.get_logger().info('%d %d %d' % (self.occdata[i, j], self.occdata[i + 1, j], self.occdata[i, j+1]))
+                    # self.get_logger().info('%d %d %d' % (self.occdata[i, j], self.occdata[i + 1, j], self.occdata[i, j+1]))
                     self.unmap_x = j
                     self.unmap_y = i
 
@@ -358,17 +361,20 @@ class AutoNav(Node):
         self.publisher_.publish(twist)
 
     def pick_direction(self):
-        self.get_logger().info('In pick_direction')
+        # self.get_logger().info('In pick_direction')
 
         # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
+            rnum = random.randint(0,360)
 
             if self.why_stop == 1:
-                lr2i = -45
+                lr2i = rnum
+                self.get_logger().info('stop for unmap angle: %i' % lr2i)
                 self.why_stop = 0
 
             if self.why_stop == 2:
-                lr2i = self.angle_to_unmap
+                lr2i = 45
+                self.get_logger().info('stop for obstacle')
                 self.why_stop = 0
 
             # use nanargmax as there are nan's in laser_range added to replace 0's
@@ -460,16 +466,21 @@ class AutoNav(Node):
             while rclpy.ok():
 
                 if self.laser_range.size != 0:
+                    # msg = String()
+                    # msg.data = "fly"
+                    # self.fly_.publish(msg)
                     # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-
-                    if len(self.prev_dist_to_unmap) != 0:
-                        if self.dist_to_unmap > self.prev_dist_to_unmap[len(self.prev_dist_to_unmap)-1]:
+                    if len(self.prev_dist_to_unmap)-1 > 0:
+                        if self.dist_to_unmap > self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2]:
+                            self.get_logger().info(
+                                'prev dist to unmap: %i' % self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2])
                             self.why_stop = 1
                             self.stopbot()
                             self.pick_direction()
+
 
                     # self.get_logger().info('Angle chosen %f' % angle_to_unmap)
 
