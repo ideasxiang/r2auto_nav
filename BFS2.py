@@ -6,9 +6,8 @@ import matplotlib.cm as cm
 import numpy as np
 from PIL import Image
 import random
-import cv2
 import collections
-import rospy
+import rclpy
 from geometry_msgs.msg import Twist, Pose
 from nav_msgs.msg import Odometry
 import numpy as np
@@ -18,7 +17,7 @@ from sympy import *
 
 #########################################################################################################
 # Import the required libraries:
-import rospy
+import rclpy
 from geometry_msgs.msg import Twist, Pose
 from nav_msgs.msg import Odometry
 import numpy as np
@@ -33,19 +32,18 @@ from sympy import *
 
 #######################################################################
 # Initialize ROS Node
-rospy.init_node('Path_Planning_BFS', anonymous=True)  # Identify ROS Node
+rclpy.init_node('Path_Planning_BFS', anonymous=True)  # Identify ROS Node
 #######################################################################
 
 #######################################################################
 # ROS Publisher Code for Velocity
-pub1 = rospy.Publisher('/BFS_Des_Pos', Pose,
+pub1 = rclpy.Publisher('/BFS_Des_Pos', Pose,
                        queue_size=10)  # Identify the publisher "pub1" to publish on topic "/APF_Des_Pos" to send message of type "Pose"
 Des_Pos_msg = Pose()  # Identify msg variable of data type Twist
-rate = rospy.Rate(10)  # rate of publishing msg 10hz
+rate = rclpy.Rate(10)  # rate of publishing msg 10hz
 #######################################################################
 global distance_delta
 global angle_delta
-
 
 #######################################################################
 def euler_to_quaternion(yaw, pitch, roll):
@@ -132,7 +130,7 @@ def callback(data):
     flag_cont = 1
 
 
-sub2 = rospy.Subscriber('/odom', Odometry,
+sub2 = rclpy.Subscriber('/odom', Odometry,
                         callback)  # Identify the subscriber "sub2" to subscribe topic "/odom" of type "Odometry"
 #######################################################################
 
@@ -180,7 +178,7 @@ def callback_Init(data):
     sub1.unregister()  # Unsubsribe from this topic
 
 
-sub1 = rospy.Subscriber('/odom', Odometry,
+sub1 = rclpy.Subscriber('/odom', Odometry,
                         callback_Init)  # Identify the subscriber "sub1" to subscribe topic "/odom" of type "Odometry"
 #######################################################################
 #######################################################################
@@ -204,7 +202,7 @@ vel_p_y = Roc_vel_0[0] * sin(Rob_pos_0[2])
 #########################################################################################################
 #######################################################################
 # APF Inputs
-Goal_Pos = [rospy.get_param("~x_Goal"), rospy.get_param("~y_Goal")]
+Goal_Pos = [rclpy.get_param("~x_Goal"), rclpy.get_param("~y_Goal")]
 
 
 def bfs(graph, start, end):
@@ -514,14 +512,14 @@ for i in range(img.size[0]):
 # Simulation While Loop
 
 
-meshwar = bfs(pixels, [5, 35], [rospy.get_param("~x_Goal") * 10, rospy.get_param("~y_Goal") * 10])
+meshwar = bfs(pixels, [5, 35], [rclpy.get_param("~x_Goal") * 10, rclpy.get_param("~y_Goal") * 10])
 count = 0
 global x_des
 x_des = (meshwar[0])[0] / 10
 global y_des
 y_des = (meshwar[0])[1] / 10
 
-while 1 and not rospy.is_shutdown() and count < (len(meshwar)):
+while 1 and not rclpy.is_shutdown() and count < (len(meshwar)):
     # Get Robot Current Position and Velocity
     if flag_cont == 1:
         Rob_pos = [position[0], position[1], position[3]]

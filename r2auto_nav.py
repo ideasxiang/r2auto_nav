@@ -193,7 +193,7 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < 100 and [x + 1, y] not in visited and graph[x + 1, y] != 0:
+            if x + 1 < 100 and [x + 1, y] not in visited and graph[x + 1, y] != 1:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -219,7 +219,7 @@ class AutoNav(Node):
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            if x + 1 < 100 and y + 1 < 40 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+            if x + 1 < 100 and y + 1 < 40 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 1:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -246,7 +246,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x + 1, y + 1])
             # node x y+1
-            if y + 1 < 40 and [x, y + 1] not in visited and graph[x, y + 1] != 0:
+            if y + 1 < 40 and [x, y + 1] not in visited and graph[x, y + 1] != 1:
 
                 if (l == 1):
                     q = []
@@ -273,7 +273,7 @@ class AutoNav(Node):
                         return new
                 visited.append([x, y + 1])
             # node x-1 y+1
-            if x - 1 > -1 and y + 1 < 40 and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 0:
+            if x - 1 > -1 and y + 1 < 40 and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 1:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -300,7 +300,7 @@ class AutoNav(Node):
                 visited.append([x - 1, y + 1])
 
             # node x-1 y
-            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 0:
+            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 1:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -327,7 +327,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x - 1, y])
             # node x-1 y-1
-            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 0:
+            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 1:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -354,7 +354,7 @@ class AutoNav(Node):
                 visited.append([x - 1, y - 1])
 
             # node x y-1
-            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 0:
+            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 1:
 
                 if (l == 1):
                     q = []
@@ -382,7 +382,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x, y - 1])
             # node x+1 y-1
-            if x + 1 < 100 and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 0:
+            if x + 1 < 100 and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 1:
 
                 # new_path.append([x+1,y-1])
                 if (l == 1):
@@ -455,76 +455,78 @@ class AutoNav(Node):
         map_res = msg.info.resolution
         # get map origin struct has fields of x, y, and z
         map_origin = msg.info.origin.position
-        # get map grid positions for x, y position
-        grid_x = round((cur_pos.x - map_origin.x) / map_res)
-        grid_y = round(((cur_pos.y - map_origin.y) / map_res))
-        # self.get_logger().info('Grid Y: %i Grid X: %i' % (grid_y, grid_x))
-
-        # binnum go from 1 to 3 so we can use uint8
-        # convert into 2D array using column order
-        odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
-        # set current robot location to 0
-        odata[grid_y][grid_x] = 0
-        # create image from 2D array using PIL
-        img = Image.fromarray(odata)
-        # find center of image
-        i_centerx = iwidth / 2
-        i_centery = iheight / 2
-        # find how much to shift the image to move grid_x and grid_y to center of image
-        shift_x = round(grid_x - i_centerx)
-        shift_y = round(grid_y - i_centery)
-        # self.get_logger().info('Shift Y: %i Shift X: %i' % (shift_y, shift_x))
-
-        # pad image to move robot position to the center
-        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/
-        left = 0
-        right = 0
-        top = 0
-        bottom = 0
-        if shift_x > 0:
-            # pad right margin
-            right = 2 * shift_x
-        else:
-            # pad left margin
-            left = 2 * (-shift_x)
-
-        if shift_y > 0:
-            # pad bottom margin
-            bottom = 2 * shift_y
-        else:
-            # pad top margin
-            top = 2 * (-shift_y)
-
-        # create new image
-        new_width = iwidth + right + left
-        new_height = iheight + top + bottom
-        img_transformed = Image.new(img.mode, (new_width, new_height), map_bg_color)
-        img_transformed.paste(img, (left, top))
-
-        # rotate by 90 degrees so that the forward direction is at the top of the image
-        rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
-
-        self.center_x = rotated.width // 2
-        self.center_y = rotated.height // 2
-
-        # make msgdata go from 0 instead of -1, reshape into 2D
-        oc2 = msgdata + 1
-        # reshape to 2D array using column order
-        # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
-        # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
-
-
-        # prev_unmap_x = self.unmap_x
-        # prev_unmap_y = self.unmap_y
-        #
-        # if prev_unmap_x == self.unmap_x:
-        #     self.unmap_x = 0
-        # if prev_unmap_y == self.unmap_y:
-        #     self.unmap_y = 0
-
         if self.mapped == 0:
+            # get map grid positions for x, y position
+            grid_x = round((cur_pos.x - map_origin.x) / map_res)
+            grid_y = round(((cur_pos.y - map_origin.y) / map_res))
+            # self.get_logger().info('Grid Y: %i Grid X: %i' % (grid_y, grid_x))
+
+            # binnum go from 1 to 3 so we can use uint8
+            # convert into 2D array using column order
+            odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
+            # set current robot location to 0
+            odata[grid_y][grid_x] = 0
+            # create image from 2D array using PIL
+            img = Image.fromarray(odata)
+            # find center of image
+            i_centerx = iwidth / 2
+            i_centery = iheight / 2
+            # find how much to shift the image to move grid_x and grid_y to center of image
+            shift_x = round(grid_x - i_centerx)
+            shift_y = round(grid_y - i_centery)
+            # self.get_logger().info('Shift Y: %i Shift X: %i' % (shift_y, shift_x))
+
+            # pad image to move robot position to the center
+            # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/
+            left = 0
+            right = 0
+            top = 0
+            bottom = 0
+            if shift_x > 0:
+                # pad right margin
+                right = 2 * shift_x
+            else:
+                # pad left margin
+                left = 2 * (-shift_x)
+
+            if shift_y > 0:
+                # pad bottom margin
+                bottom = 2 * shift_y
+            else:
+                # pad top margin
+                top = 2 * (-shift_y)
+
+            # create new image
+            new_width = iwidth + right + left
+            new_height = iheight + top + bottom
+            img_transformed = Image.new(img.mode, (new_width, new_height), map_bg_color)
+            img_transformed.paste(img, (left, top))
+
+            # rotate by 90 degrees so that the forward direction is at the top of the image
+            rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
+
+            self.center_x = rotated.width // 2
+            self.center_y = rotated.height // 2
+
+            # make msgdata go from 0 instead of -1, reshape into 2D
+            oc2 = msgdata + 1
+            # reshape to 2D array using column order
+            # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
+            # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
+
+
+            # prev_unmap_x = self.unmap_x
+            # prev_unmap_y = self.unmap_y
+            #
+            # if prev_unmap_x == self.unmap_x:
+            #     self.unmap_x = 0
+            # if prev_unmap_y == self.unmap_y:
+            #     self.unmap_y = 0
+
+
             self.mapped = 1
             self.occdata = np.array(rotated)
+
             for i in range(1, np.size(self.occdata, 0) - 1):
                 for j in range(1, np.size(self.occdata, 1) - 1):
                     # self.get_logger().info(str(self.occdata[i, j]))
@@ -533,46 +535,46 @@ class AutoNav(Node):
                         self.unmap_x = j
                         self.unmap_y = i
 
-            unmap_x = self.unmap_x
-            unmap_y = self.unmap_y
-            # self.get_logger().info('%d %d' % (unmap_x, unmap_y))
+            # unmap_x = self.unmap_x
+            # unmap_y = self.unmap_y
+            # # self.get_logger().info('%d %d' % (unmap_x, unmap_y))
+            #
+            # our_x = self.center_x
+            # our_y = self.center_y
+            #
+            # x_dist = math.dist((unmap_x, 0), (our_x, 0))
+            # y_dist = math.dist((0, unmap_y), (0, our_y))
+            #
+            # x_negative = our_x > unmap_x
+            # y_negative = our_y > unmap_y
+            #
+            # self.dist_x = x_dist
+            # self.dist_y = y_dist
+            # self.dist_to_unmap = math.dist((unmap_x, unmap_y), (our_x, our_y))
+            # self.prev_dist_to_unmap.append(self.dist_to_unmap)
+            #
+            # if x_dist != 1:
+            #     angle_to_unmap = math.atan(y_dist / x_dist)
+            #     if x_negative and y_negative:
+            #         self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
+            #     elif x_negative and (not y_negative):
+            #         self.angle_to_unmap = (angle_to_unmap - math.pi / 2) * 180 / math.pi
+            #     elif not x_negative and y_negative:
+            #         self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
+            #     else:
+            #         self.angle_to_unmap = angle_to_unmap * 180 / math.pi
 
-            our_x = self.center_x
-            our_y = self.center_y
-
-            x_dist = math.dist((unmap_x, 0), (our_x, 0))
-            y_dist = math.dist((0, unmap_y), (0, our_y))
-
-            x_negative = our_x > unmap_x
-            y_negative = our_y > unmap_y
-
-            self.dist_x = x_dist
-            self.dist_y = y_dist
-            self.dist_to_unmap = math.dist((unmap_x, unmap_y), (our_x, our_y))
-            self.prev_dist_to_unmap.append(self.dist_to_unmap)
-
-            if x_dist != 0:
-                angle_to_unmap = math.atan(y_dist / x_dist)
-                if x_negative and y_negative:
-                    self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
-                elif x_negative and (not y_negative):
-                    self.angle_to_unmap = (angle_to_unmap - math.pi / 2) * 180 / math.pi
-                elif not x_negative and y_negative:
-                    self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
-                else:
-                    self.angle_to_unmap = angle_to_unmap * 180 / math.pi
-
-            plt.xlabel(
-                'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
-                '%f degrees Distance to unmap: %i' %
-                (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
-                 self.angle_to_unmap, self.dist_to_unmap))
+            # plt.xlabel(
+            #     'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
+            #     '%f degrees Distance to unmap: %i' %
+            #     (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
+            #      self.angle_to_unmap, self.dist_to_unmap))
             plt.grid()
             plt.plot(self.unmap_x, self.unmap_y, 'rx')
             plt.imshow(rotated, cmap='gray', origin='lower')
             plt.draw_all()
             plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
-            plt.cla()
+            # plt.cla()
             # pause to make sure the plot gets created
             plt.pause(0.00000000001)
             # print to file
@@ -644,10 +646,10 @@ class AutoNav(Node):
         # self.get_logger().info('In pick_direction')
 
         # np.savetxt(laserfile, self.laser_range)
-        if self.laser_range.size != 0:
+        if self.laser_range.size != 1:
             rnum = random.randint(0, 360)
-
             lr2i = rnum
+            # lr2i = math.degrees(atan2(point_to_go[0] - self.center_x, point_to_go[1] - self.center_y))
             # if self.why_stop == 1:
             #     lr2i = rnum
             #     self.get_logger().info('stop for unmap angle: %i' % lr2i)
@@ -742,6 +744,15 @@ class AutoNav(Node):
 
             # find direction with the largest distance from the Lidar,
             # rotate to that direction, and start moving
+
+            # move_to_points = self.bfs(self.occdata, (self.center_x, self.center_y), (self.unmap_x, self.unmap_y))
+
+            # initial = move_to_points.pop(0)
+            #
+            # if initial[0] == self.center_x and initial[1] == self.center_y:
+            #     self.mapped = 0
+            self.get_logger().info("%s" % self.bfs(self.occdata, [self.center_x, self.center_y], [self.unmap_x, self.unmap_y]))
+
             self.pick_direction()
 
             while rclpy.ok():
@@ -751,7 +762,7 @@ class AutoNav(Node):
                     time.sleep(15)
                     self.pick_direction()
 
-                if self.laser_range.size != 0:
+                if self.laser_range.size != 1:
                     # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance

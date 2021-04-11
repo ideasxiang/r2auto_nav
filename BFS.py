@@ -260,7 +260,7 @@ class AutoNav(Node):
 
         # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
-
+            i = 0
         else:
             lr2i = 0
             self.get_logger().info('No data!')
