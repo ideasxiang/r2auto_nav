@@ -89,8 +89,14 @@ class AutoNav(Node):
             'odom',
             self.odom_callback,
             10)
+        self.temp_subscription = self.create_subscription(
+            String,
+            'temp',
+            self.temp,
+            12)
         self.get_logger().info('Created subscriber')
         self.odom_subscription  # prevent unused variable warning
+        self.temp_subscription
         # initialize variables
         self.roll = 0
         self.pitch = 0
@@ -108,6 +114,8 @@ class AutoNav(Node):
         self.prev_dist_to_unmap = []
         self.laser_count = 0
         self.why_stop = 0
+        self.shoot = 0
+        self.mapped = 0
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
@@ -136,6 +144,274 @@ class AutoNav(Node):
                                                                 orientation_quat.z, orientation_quat.w)
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
+
+    def temp(self, msg):
+        self.get_logger().info("In temp callback")
+        self.get_logger().info("%s" % msg.data)
+        obj_temp, ambient_temp = str(msg.data).split(',')
+        if float(obj_temp) > 31:
+            self.shoot = 1
+            msg2 = String()
+            msg2.data = "fly"
+            self.fly_.publish(msg2)
+
+    def bfs(self, graph, start, end):
+        # maintain a queue of paths
+        queue = []
+        # visited = set([start])
+        visited = []
+        # push the first path into the queue
+        queue.append(start)  # [[25,25]]
+        # queue= collections.deque(start)
+        visited.append(start)
+        w = []
+        l = 0
+        while len(queue) > 0:
+            # get the first path from the queue
+
+            path = queue.pop(0)
+
+            if (isinstance(path[0], int)):
+                p = path
+                l = 1
+            else:
+                p = path[-1]
+                l = 0
+
+            # xx.append(path)
+            # print(new_path)
+            # get the last node from the path
+            # node = path[-1]
+            # new_path = []
+            # path found
+
+            x = p[0]
+            y = p[1]
+
+            # enumerate all adjacent nodes, construct a new path and push it into the queue
+            # new_path= list()
+            # node x+1 y
+            # print(x)
+            # print(y)
+            if x + 1 < 100 and [x + 1, y] not in visited and graph[x + 1, y] != 0:
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x + 1 == end[0] and y == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x + 1, y])
+                    queue.append(new)
+                    if x + 1 == end[0] and y == end[1]:
+                        # print("ccc")
+
+                        return new
+                # new_path.append([x+1,y])
+
+                visited.append([x + 1, y])
+            # node x+1 y+1
+            if x + 1 < 100 and y + 1 < 40 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                # new_path.append([x+1,y])
+                visited.append([x + 1, y + 1])
+            # node x y+1
+            if y + 1 < 40 and [x, y + 1] not in visited and graph[x, y + 1] != 0:
+
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x, y + 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x, y + 1])
+                    queue.append(new)
+                    if x == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                visited.append([x, y + 1])
+            # node x-1 y+1
+            if x - 1 > -1 and y + 1 < 40 and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 0:
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x - 1 == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x - 1, y + 1])
+                    queue.append(new)
+                    if x - 1 == end[0] and y + 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                visited.append([x - 1, y + 1])
+
+            # node x-1 y
+            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 0:
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x - 1, y])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x - 1 == end[0] and y == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x - 1, y])
+                    queue.append(new)
+                    if x - 1 == end[0] and y == end[1]:
+                        # print("ccc")
+
+                        return new
+                # new_path.append([x+1,y])
+                visited.append([x - 1, y])
+            # node x-1 y-1
+            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 0:
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x - 1 == end[0] and y - 1 == end[1]:
+                        print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x - 1, y - 1])
+                    queue.append(new)
+                    if x - 1 == end[0] and y - 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                visited.append([x - 1, y - 1])
+
+            # node x y-1
+            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 0:
+
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x, y - 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x == end[0] and y - 1 == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x, y - 1])
+                    queue.append(new)
+                    if x == end[0] and y - 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                # new_path.append([x+1,y])
+                visited.append([x, y - 1])
+            # node x+1 y-1
+            if x + 1 < 100 and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 0:
+
+                # new_path.append([x+1,y-1])
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if x + 1 == end[0] and y - 1 == end[1]:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x + 1, y - 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y - 1 == end[1]:
+                        # print("ccc")
+
+                        return new
+                visited.append([x + 1, y - 1])
+        # print(len(queue))
+
+        return None
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
@@ -200,7 +476,7 @@ class AutoNav(Node):
         # self.get_logger().info('Shift Y: %i Shift X: %i' % (shift_y, shift_x))
 
         # pad image to move robot position to the center
-        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/ 
+        # adapted from https://note.nkmk.me/en/python-pillow-add-margin-expand-canvas/
         left = 0
         right = 0
         top = 0
@@ -236,14 +512,7 @@ class AutoNav(Node):
         # reshape to 2D array using column order
         # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
         # self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
-        self.occdata = np.array(rotated)
-        for i in range(1, np.size(self.occdata, 0)-1):
-            for j in range(1, np.size(self.occdata, 1)-1):
-                # self.get_logger().info(str(self.occdata[i, j]))
-                if self.occdata[i, j] == 1 and self.occdata[i+1, j] == 2 and self.occdata[i, j+1] == 3:
-                    # self.get_logger().info('%d %d %d' % (self.occdata[i, j], self.occdata[i + 1, j], self.occdata[i, j+1]))
-                    self.unmap_x = j
-                    self.unmap_y = i
+
 
         # prev_unmap_x = self.unmap_x
         # prev_unmap_y = self.unmap_y
@@ -253,50 +522,61 @@ class AutoNav(Node):
         # if prev_unmap_y == self.unmap_y:
         #     self.unmap_y = 0
 
-        unmap_x = self.unmap_x
-        unmap_y = self.unmap_y
-        # self.get_logger().info('%d %d' % (unmap_x, unmap_y))
+        if self.mapped == 0:
+            self.mapped = 1
+            self.occdata = np.array(rotated)
+            for i in range(1, np.size(self.occdata, 0) - 1):
+                for j in range(1, np.size(self.occdata, 1) - 1):
+                    # self.get_logger().info(str(self.occdata[i, j]))
+                    if self.occdata[i, j] == 1 and self.occdata[i + 1, j] == 2 and self.occdata[i, j + 1] == 3:
+                        # self.get_logger().info('%d %d %d' % (self.occdata[i, j], self.occdata[i + 1, j], self.occdata[i, j+1]))
+                        self.unmap_x = j
+                        self.unmap_y = i
 
-        our_x = self.center_x
-        our_y = self.center_y
+            unmap_x = self.unmap_x
+            unmap_y = self.unmap_y
+            # self.get_logger().info('%d %d' % (unmap_x, unmap_y))
 
-        x_dist = math.dist((unmap_x, 0), (our_x, 0))
-        y_dist = math.dist((0, unmap_y), (0, our_y))
+            our_x = self.center_x
+            our_y = self.center_y
 
-        x_negative = our_x > unmap_x
-        y_negative = our_y > unmap_y
+            x_dist = math.dist((unmap_x, 0), (our_x, 0))
+            y_dist = math.dist((0, unmap_y), (0, our_y))
 
-        self.dist_x = x_dist
-        self.dist_y = y_dist
-        self.dist_to_unmap = math.dist((unmap_x, unmap_y), (our_x, our_y))
-        self.prev_dist_to_unmap.append(self.dist_to_unmap)
+            x_negative = our_x > unmap_x
+            y_negative = our_y > unmap_y
 
-        if x_dist != 0:
-            angle_to_unmap = math.atan(y_dist / x_dist)
-            if x_negative and y_negative:
-                self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
-            elif x_negative and (not y_negative):
-                self.angle_to_unmap = (angle_to_unmap - math.pi / 2) * 180 / math.pi
-            elif not x_negative and y_negative:
-                self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
-            else:
-                self.angle_to_unmap = angle_to_unmap * 180 / math.pi
+            self.dist_x = x_dist
+            self.dist_y = y_dist
+            self.dist_to_unmap = math.dist((unmap_x, unmap_y), (our_x, our_y))
+            self.prev_dist_to_unmap.append(self.dist_to_unmap)
 
-        plt.xlabel(
-            'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
-            '%f degrees Distance to unmap: %i' %
-            (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
-             self.angle_to_unmap, self.dist_to_unmap))
-        plt.grid()
-        plt.plot(self.unmap_x, self.unmap_y, 'rx')
-        plt.imshow(rotated, cmap='gray', origin='lower')
-        plt.draw_all()
-        plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
-        plt.cla()
-        # pause to make sure the plot gets created
-        plt.pause(0.00000000001)
-        # print to file
-        np.savetxt(mapfile, self.occdata)
+            if x_dist != 0:
+                angle_to_unmap = math.atan(y_dist / x_dist)
+                if x_negative and y_negative:
+                    self.angle_to_unmap = (angle_to_unmap + math.pi) * 180 / math.pi
+                elif x_negative and (not y_negative):
+                    self.angle_to_unmap = (angle_to_unmap - math.pi / 2) * 180 / math.pi
+                elif not x_negative and y_negative:
+                    self.angle_to_unmap = (angle_to_unmap + math.pi / 2) * 180 / math.pi
+                else:
+                    self.angle_to_unmap = angle_to_unmap * 180 / math.pi
+
+            plt.xlabel(
+                'Center X: %i, Center Y: %i, Unmapped X: %i, Unmapped Y: %i\n Dist X: %i, Dist Y: %i, Angle to unmapped: '
+                '%f degrees Distance to unmap: %i' %
+                (rotated.width // 2, rotated.height // 2, self.unmap_x, self.unmap_y, self.dist_x, self.dist_y,
+                 self.angle_to_unmap, self.dist_to_unmap))
+            plt.grid()
+            plt.plot(self.unmap_x, self.unmap_y, 'rx')
+            plt.imshow(rotated, cmap='gray', origin='lower')
+            plt.draw_all()
+            plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+            plt.cla()
+            # pause to make sure the plot gets created
+            plt.pause(0.00000000001)
+            # print to file
+            np.savetxt(mapfile, self.occdata)
 
     def scan_callback(self, msg):
         # self.get_logger().info('In scan_callback')
@@ -365,17 +645,18 @@ class AutoNav(Node):
 
         # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
-            rnum = random.randint(0,360)
+            rnum = random.randint(0, 360)
 
-            if self.why_stop == 1:
-                lr2i = rnum
-                self.get_logger().info('stop for unmap angle: %i' % lr2i)
-                self.why_stop = 0
-
-            if self.why_stop == 2:
-                lr2i = 45
-                self.get_logger().info('stop for obstacle')
-                self.why_stop = 0
+            lr2i = rnum
+            # if self.why_stop == 1:
+            #     lr2i = rnum
+            #     self.get_logger().info('stop for unmap angle: %i' % lr2i)
+            #     self.why_stop = 0
+            #
+            # if self.why_stop == 2:
+            #     lr2i = 45
+            #     self.get_logger().info('stop for obstacle')
+            #     self.why_stop = 0
 
             # use nanargmax as there are nan's in laser_range added to replace 0's
             # laser_array = self.laser_range
@@ -465,22 +746,23 @@ class AutoNav(Node):
 
             while rclpy.ok():
 
+                if self.shoot == 1:
+                    self.stopbot()
+                    time.sleep(15)
+                    self.pick_direction()
+
                 if self.laser_range.size != 0:
-                    # msg = String()
-                    # msg.data = "fly"
-                    # self.fly_.publish(msg)
                     # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-                    if len(self.prev_dist_to_unmap)-1 > 0:
-                        if self.dist_to_unmap > self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2]:
-                            self.get_logger().info(
-                                'prev dist to unmap: %i' % self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2])
-                            self.why_stop = 1
-                            self.stopbot()
-                            self.pick_direction()
-
+                    # if len(self.prev_dist_to_unmap) - 1 > 0:
+                    #     if self.dist_to_unmap > self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2]:
+                    #         self.get_logger().info(
+                    #             'prev dist to unmap: %i' % self.prev_dist_to_unmap[len(self.prev_dist_to_unmap) - 2])
+                    #         self.why_stop = 1
+                    #         self.stopbot()
+                    #         self.pick_direction()
 
                     # self.get_logger().info('Angle chosen %f' % angle_to_unmap)
 

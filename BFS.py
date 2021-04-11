@@ -14,28 +14,39 @@
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
+from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 import numpy as np
+import matplotlib.pyplot as plt
+import tf2_ros
 import math
 import cmath
 import time
+import scipy.stats
 import random
+from PIL import Image, ImageDraw
 
 # constants
 rotatechange = 0.5
 speedchange = 0.1
-occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.5
-max_distance = 1.2
+occ_bins = [-1, 0, 50, 100]
+stop_distance = 0.55
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
-mapfile = 'map.txt'
-msgfile = 'msg.txt'
+mapfile = f"newmap{time.strftime('%Y%m%d%H%M%S')}.txt"
+laserfile = 'laser.txt'
+angle_array = []
+points = []
+nan_array = []
+laser_array = []
+map_bg_color = 1
+random_angle = [0, -90, 90, 180]
 
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
@@ -69,6 +80,7 @@ class AutoNav(Node):
 
         # create publisher for moving TurtleBot
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.fly_ = self.create_publisher(String, 'fly', 11)
         self.get_logger().info('Created publisher')
 
         # create subscription to track orientation
@@ -85,8 +97,19 @@ class AutoNav(Node):
         self.yaw = 0
         self.x = 0
         self.y = 0
+        self.center_x = 0
+        self.center_y = 0
+        self.unmap_x = 0
+        self.unmap_y = 0
+        self.dist_x = 0
+        self.dist_y = 0
+        self.angle_to_unmap = 0
+        self.dist_to_unmap = 0
+        self.prev_dist_to_unmap = []
+        self.laser_count = 0
         self.why_stop = 0
-        self.turn_already = 0
+        self.tfBuffer = tf2_ros.Buffer()
+        self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
@@ -113,9 +136,6 @@ class AutoNav(Node):
                                                                 orientation_quat.z, orientation_quat.w)
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
-        # self.get_logger().info('x: %f, y: %f' % (self.x, self.y))
-        # self.get_logger().info(str(msg))
-        # np.savetxt(msgfile, msg)
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
@@ -128,12 +148,48 @@ class AutoNav(Node):
         # log the info
         # self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0][0], occ_counts[0][1], occ_counts[0][2], total_bins))
 
-        # make msgdata go from 0 instead of -1, reshape into 2D
-        oc2 = msgdata + 1
-        # reshape to 2D array using column order
-        # self.occdata = np.uint8(oc2.reshape(msg.info.height,msg.info.width,order='F'))
-        self.occdata = np.uint8(oc2.reshape(msg.info.height, msg.info.width))
-        # self.get_logger().info(str(self.occdata))
+        # compute histogram to identify bins with -1, values between 0 and below 50,
+        # and values between 50 and 100. The binned_statistic function will also
+        # return the bin numbers so we can use that easily to create the image
+        occ_counts, edges, binnum = scipy.stats.binned_statistic(msgdata, np.nan, statistic='count', bins=occ_bins)
+        # get width and height of map
+        iwidth = msg.info.width
+        iheight = msg.info.height
+        # calculate total number of bins
+        total_bins = iwidth * iheight
+        # log the info
+        # self.get_logger().info('Unmapped: %i Unoccupied: %i Occupied: %i Total: %i' % (occ_counts[0], occ_counts[1], occ_counts[2], total_bins))
+
+        # find transform to obtain base_link coordinates in the map frame
+        # lookup_transform(target_frame, source_frame, time)
+        try:
+            trans = self.tfBuffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        except (LookupException, ConnectivityException, ExtrapolationException) as e:
+            self.get_logger().info('No transformation found')
+            return
+
+        cur_pos = trans.transform.translation
+        cur_rot = trans.transform.rotation
+        # self.get_logger().info('Trans: %f, %f' % (cur_pos.x, cur_pos.y))
+        # convert quaternion to Euler angles
+        roll, pitch, yaw = euler_from_quaternion(cur_rot.x, cur_rot.y, cur_rot.z, cur_rot.w)
+        # self.get_logger().info('Rot-Yaw: R: %f D: %f' % (yaw, np.degrees(yaw)))
+
+        # get map resolution
+        map_res = msg.info.resolution
+        # get map origin struct has fields of x, y, and z
+        map_origin = msg.info.origin.position
+        # get map grid positions for x, y position
+        grid_x = round((cur_pos.x - map_origin.x) / map_res)
+        grid_y = round(((cur_pos.y - map_origin.y) / map_res))
+        # self.get_logger().info('Grid Y: %i Grid X: %i' % (grid_y, grid_x))
+
+        # binnum go from 1 to 3 so we can use uint8
+        # convert into 2D array using column order
+        odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
+        # set current robot location to 0
+        odata[grid_y][grid_x] = 0
+        self.occdata = odata
         # print to file
         np.savetxt(mapfile, self.occdata)
 
@@ -200,51 +256,11 @@ class AutoNav(Node):
         self.publisher_.publish(twist)
 
     def pick_direction(self):
-        self.get_logger().info('In pick_direction')
+        # self.get_logger().info('In pick_direction')
+
+        # np.savetxt(laserfile, self.laser_range)
         if self.laser_range.size != 0:
-            # use nanargmax as there are nan's in laser_range added to replace 0's
-            # if 0 <= int(self.x) < len(past_angles) and 0 <= int(self.y) < len(past_angles[0]):
-            #     if np.nanargmax(self.laser_range) not in past_angles[int(self.x)][int(self.y)]:
-            #         past_angles[int(self.x)][int(self.y)].append(np.nanargmax(self.laser_range))
-            #         lr2i = np.nanargmax(self.laser_range)
-            # else:
-            #     lr2i = 0
-            # angle = 0
-            # for i in range(0,360):
-            #     if np.isnan(self.laser_range[i]):
-            #         angle = i
-            # lr2i = angle
 
-            if self.why_stop == 1:
-                lr2i = -25
-                self.why_stop = 0
-            if self.why_stop == 2:
-                lr2i = 35
-                self.why_stop = 0
-
-            # for i in range(0, 360):
-            #     if (self.laser_range[i] not in nan_array):
-            #         if (math.isnan(self.laser_range[i])):
-            #             nan_array.append(i)
-            #             lr2i = i
-
-            # size = len(self.occdata)
-            # size1 = len(self.occdata[0])
-            # middle = (int(size/2), int(size1/2))
-            # ref = (0, int(size1/2))
-            # lr2i = random.randint(0,360)
-            # for i in range(0,size):
-            #     for j in range(0,size1):
-            #         if ((self.occdata[i][j]) == 0):
-            #             print(i,j)
-            # point = (i, j)
-            # hyp = int(math.dist(middle, point))
-            # adj = int(math.dist(middle, ref))
-            # angle = int(math.acos(adj/hyp))
-            # lr2i = angle
-
-            # lr2i = r_num
-            # self.get_logger().info('Picked direction: %d' % lr2i)
         else:
             lr2i = 0
             self.get_logger().info('No data!')
@@ -271,6 +287,167 @@ class AutoNav(Node):
         # time.sleep(1)
         self.publisher_.publish(twist)
 
+    def bfs(self, graph, start, end):
+        queue = []
+        visited = []
+        queue.append(start)
+        visited.append(start)
+        w =[]
+        l = 0
+        while len(queue) > 0:
+            path = queue.pop(0)
+            if isinstance(path[0], int):
+                p = path
+                l = 1
+            else:
+                p = path[-1]
+                l = 0
+            x = p[0]
+            y = p[1]
+
+            # node x+1 y
+            if x + 1 < 100 and [x+1, y] not in visited and graph[x + 1, y] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y])
+                    queue.append(q)
+                    if x + 1 == end[0] and y == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i+1
+                    new.append([x + 1, y])
+                    queue.append(new)
+                    if x+1 == end[0] and y == end[1]:
+                        return new
+                visited.append([x+1, y])
+
+            # node x+1 y-1
+            if x+1<100 and y-1<100 and [x+1, y-1] not in visited and graph[x+1, y-1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x+1, y-1])
+                    queue.append(q)
+                    if x+1 == end[0] and y-1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i+1
+                    new.append([x+1, y-1])
+                    queue.append(new)
+                    if x+1 == end[0] and y-1 == end[1]:
+                        return new
+                visited.append([x+1, y-1])
+
+            # node x y-1
+            if x < 100 and y - 1 < 100 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x, y - 1])
+                    queue.append(q)
+                    if x == end[0] and y - 1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return new
+                visited.append([x + 1, y + 1])
+
+            if x + 1 < 100 and y + 1 < 100 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])
+                    queue.append(q)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return new
+                visited.append([x + 1, y + 1])
+
+            if x + 1 < 100 and y + 1 < 100 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])
+                    queue.append(q)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return new
+                visited.append([x + 1, y + 1])
+
+            if x + 1 < 100 and y + 1 < 100 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])
+                    queue.append(q)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return new
+                visited.append([x + 1, y + 1])
+
+            if x + 1 < 100 and y + 1 < 100 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 0:
+                if l == 1:
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])
+                    queue.append(q)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while i <= len(path) - 1:
+                        new.append(path[i])
+                        i = i + 1
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if x + 1 == end[0] and y + 1 == end[1]:
+                        return new
+                visited.append([x + 1, y + 1])
+
     def mover(self):
         try:
             # initialize variable to write elapsed time to file
@@ -281,31 +458,25 @@ class AutoNav(Node):
             self.pick_direction()
 
             while rclpy.ok():
+
                 if self.laser_range.size != 0:
+                    # msg = String()
+                    # msg.data = "fly"
+                    # self.fly_.publish(msg)
+                    # self.laser_count += 1
                     # check distances in front of TurtleBot and find values less
                     # than stop_distance
-
-                    # self.get_logger().info('Distances: %s' % str(self.laser_range[front_angles]))
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
 
-                    if self.laser_range[270] > 0.8:
-                        self.get_logger().info('Far from Wall')
-                        self.why_stop = 1
-                        self.stopbot()
-                        self.pick_direction()
-
                     # if the list is not empty
-                    if len(lri[0]) > 0:
+                    if (len(lri[0]) > 0):
                         self.why_stop = 2
-                        self.get_logger().info('Going to crash')
                         # stop moving
                         self.stopbot()
                         # find direction with the largest distance from the Lidar
                         # rotate to that direction
                         # start moving
                         self.pick_direction()
-
-                    self.turn_already = 0
 
                 # allow the callback functions to run
                 rclpy.spin_once(self)
@@ -317,64 +488,6 @@ class AutoNav(Node):
         finally:
             # stop moving
             self.stopbot()
-
-
-def closure(mapdata):
-    # This function checks if mapdata contains a closed contour. The function
-    # assumes that the raw map data from SLAM has been modified so that
-    # -1 (unmapped) is now 0, and 0 (unoccupied) is now 1, and the occupied
-    # values go from 1 to 101.
-
-    # According to: https://stackoverflow.com/questions/17479606/detect-closed-contours?rq=1
-    # closed contours have larger areas than arc length, while open contours have larger
-    # arc length than area. But in my experience, open contours can have areas larger than
-    # the arc length, but closed contours tend to have areas much larger than the arc length
-    # So, we will check for contour closure by checking if any of the contours
-    # have areas that are more than 10 times larger than the arc length
-    # This value may need to be adjusted with more testing.
-    ALTHRESH = 10
-    # We will slightly fill in the contours to make them easier to detect
-    DILATE_PIXELS = 3
-
-    # assumes mapdata is uint8 and consists of 0 (unmapped), 1 (unoccupied),
-    # and other positive values up to 101 (occupied)
-    # so we will apply a threshold of 2 to create a binary image with the
-    # occupied pixels set to 255 and everything else is set to 0
-    # we will use OpenCV's threshold function for this
-    ret, img2 = cv2.threshold(mapdata, 2, 255, 0)
-    # we will perform some erosion and dilation to fill out the contours a
-    # little bit
-    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (DILATE_PIXELS, DILATE_PIXELS))
-    # img3 = cv2.erode(img2,element)
-    img4 = cv2.dilate(img2, element)
-    # use OpenCV's findContours function to identify contours
-    # OpenCV version 3 changed the number of return arguments, so we
-    # need to check the version of OpenCV installed so we know which argument
-    # to grab
-    fc = cv2.findContours(img4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    (major, minor, _) = cv2.__version__.split(".")
-    if (major == '3'):
-        contours = fc[1]
-    else:
-        contours = fc[0]
-    # find number of contours returned
-    lc = len(contours)
-    # rospy.loginfo('# Contours: %s', str(lc))
-    # create array to compute ratio of area to arc length
-    cAL = np.zeros((lc, 2))
-    for i in range(lc):
-        cAL[i, 0] = cv2.contourArea(contours[i])
-        cAL[i, 1] = cv2.arcLength(contours[i], True)
-
-    # closed contours tend to have a much higher area to arc length ratio,
-    # so if there are no contours with high ratios, we can safely say
-    # there are no closed contours
-    cALratio = cAL[:, 0] / cAL[:, 1]
-    # rospy.loginfo('Closure: %s', str(cALratio))
-    if np.any(cALratio > ALTHRESH):
-        return True
-    else:
-        return False
 
 
 def main(args=None):
