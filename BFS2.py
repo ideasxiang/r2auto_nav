@@ -32,7 +32,7 @@ from sympy import *
 
 #######################################################################
 # Initialize ROS Node
-rclpy.init_node('Path_Planning_BFS', anonymous=True)  # Identify ROS Node
+rclpy.init('Path_Planning_BFS', anonymous=True)  # Identify ROS Node
 #######################################################################
 
 #######################################################################
