@@ -34,8 +34,8 @@ from PIL import Image, ImageDraw
 # constants
 rotatechange = 0.5
 speedchange = 0.1
-occ_bins = [-1, 0, 60, 100]
-stop_distance = 0.5
+occ_bins = [-1, 0, 50, 100]
+stop_distance = 0.2
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -84,12 +84,21 @@ class AutoNav(Node):
             'odom',
             self.odom_callback,
             10)
+        self.temp_subscription = self.create_subscription(
+            String,
+            'temp',
+            self.temp,
+            12)
         self.get_logger().info('Created subscriber')
         self.odom_subscription  # prevent unused variable warning
+        self.temp_subscription
         # initialize variables
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
+        self.shoot = 0
+        self.point_next = (0, 0)
+        self.map_resolution = 0
         self.points_to_move = np.array([])
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
@@ -117,6 +126,13 @@ class AutoNav(Node):
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
+
+    def temp(self, msg):
+        self.get_logger().info("In temp callback")
+        self.get_logger().info("%s" % msg.data)
+        obj_temp, ambient_temp = str(msg.data).split(',')
+        if float(obj_temp) > 31:
+            self.shoot = 1
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
@@ -158,6 +174,7 @@ class AutoNav(Node):
 
         # get map resolution
         map_res = msg.info.resolution
+        self.map_resolution = map_res
         # get map origin struct has fields of x, y, and z
         map_origin = msg.info.origin.position
         # get map grid positions for x, y position
@@ -169,7 +186,7 @@ class AutoNav(Node):
         # convert into 2D array using column order
         odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
         # set current robot location to 0
-        odata[grid_x][grid_y] = 0
+        odata[grid_y][grid_x] = 0
         # create image from 2D array using PIL
         img = Image.fromarray(odata)
         # find center of image
@@ -207,14 +224,6 @@ class AutoNav(Node):
         img_transformed.paste(img, (left, top))
 
         self.occdata = np.array(img_transformed)
-
-        plt.grid()
-        plt.imshow(img_transformed, cmap='gray', origin='lower')
-        plt.draw_all()
-        plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
-        # plt.cla()
-        # pause to make sure the plot gets created
-        plt.pause(0.00000000001)
         # print to file
         np.savetxt(mapfile, self.occdata)
 
@@ -257,7 +266,7 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < len(graph) and [x + 1, y] not in visited and graph[x + 1, y] != 3:
+            if x + 1 < len(graph[0]) and [x + 1, y] not in visited and graph[x + 1, y] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -283,7 +292,7 @@ class AutoNav(Node):
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            if x + 1 < len(graph) and y + 1 < len(graph[0]) and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 3:
+            if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -310,7 +319,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x + 1, y + 1])
             # node x y+1
-            if y + 1 < len(graph[0]) and [x, y + 1] not in visited and graph[x, y + 1] != 3:
+            if y + 1 < len(graph) and [x, y + 1] not in visited and graph[x, y + 1] != 3:
 
                 if (l == 1):
                     q = []
@@ -337,7 +346,7 @@ class AutoNav(Node):
                         return new
                 visited.append([x, y + 1])
             # node x-1 y+1
-            if x - 1 > -1 and y + 1 < len(graph[0]) and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3:
+            if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -446,7 +455,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x, y - 1])
             # node x+1 y-1
-            if x + 1 < len(graph) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3:
+            if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3:
 
                 # new_path.append([x+1,y-1])
                 if (l == 1):
@@ -586,57 +595,89 @@ class AutoNav(Node):
 
             # find direction with the largest distance from the Lidar,
             # rotate to that direction, and start moving
-            twist = Twist()
-            self.pick_direction()
-            if len(self.occdata) != 0:
-                bot_position = (len(self.occdata)//2, len(self.occdata[0])//2)
-                points_to_move = self.bfs(self.occdata, bot_position)
-                while len(points_to_move) != 0:
-                    first_point = points_to_move.pop(0)
-                    distance_to_point = math.dist(first_point, bot_position)
-                    angle_to_move = math.degrees(math.atan2(bot_position[1] - first_point[1], bot_position[0] - first_point[0]))
-                    current_yaw = self.yaw
-                    c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                    target_yaw = math.radians(angle_to_move%360)
-                    c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
-                    c_change = c_target_yaw / c_yaw
-                    c_change_dir = np.sign(c_change.imag)
-                    twist.linear.x = 0.0
-                    twist.angular.z = c_change_dir * rotatechange
-                    self.publisher_.publish(twist)
-                    # we will use the c_dir_diff variable to see if we can stop rotating
-                    c_dir_diff = c_change_dir
-                    # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
-                    # if the rotation direction was 1.0, then we will want to stop when the c_dir_diff
-                    # becomes -1.0, and vice versa
-                    while (c_change_dir * c_dir_diff > 0):
-                        rclpy.spin_once(self)
-                        current_yaw = self.yaw
-                        c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                        c_change = c_target_yaw / c_yaw
-                        c_dir_diff = np.sign(c_change.imag)
-                    twist.angular.z = 0.0
-                    self.publisher_.publish(twist)
-                    twist.linear.x = speedchange
-                    self.publisher_.publish(twist)
-                    time.sleep(distance_to_point/speedchange)
-                    twist.linear.x = 0.0
-                    self.publisher_.publish(twist)
-
-
             while rclpy.ok():
+                twist = Twist()
+                if len(self.occdata) != 0:
+                    # note that self.occdata is y then x
+                    bot_position = (len(self.occdata)//2, len(self.occdata[0])//2)
+                    self.get_logger().info("bot position %s" % str(bot_position))
+                    points_to_move = self.bfs(self.occdata, bot_position)
+                    while len(points_to_move) != 0:
+                        if self.shoot == 1:
+                            self.stopbot()
+                            msg2 = String()
+                            msg2.data = "fly"
+                            self.fly_.publish(msg2)
+                            time.sleep(20)
 
-                if self.laser_range.size != 0:
-                    lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+                        self.get_logger().info("%s" % str(points_to_move))
+                        first_point = points_to_move.pop(0)
+                        # again y then x
+                        self.point_next = (first_point[0], first_point[1])
+                        # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
+                        distance_to_point = math.dist(first_point, bot_position)
+                        angle_to_move = math.degrees(math.atan2(bot_position[0] - first_point[0], bot_position[1] - first_point[1]))
+                        self.get_logger().info("angle to move %d" % angle_to_move)
+                        current_yaw = self.yaw
+                        self.get_logger().info('Current: %f' % math.degrees(current_yaw))
+                        c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
+                        target_yaw = math.radians(angle_to_move % 360)
+                        c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
+                        self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
+                        c_change = c_target_yaw / c_yaw
+                        # get the sign of the imaginary component to figure out which way we have to turn
+                        c_change_dir = np.sign(c_change.imag)
+                        # set linear speed to zero so the TurtleBot rotates on the spot
+                        twist.linear.x = 0.0
+                        # set the direction to rotate
+                        twist.angular.z = c_change_dir * rotatechange
+                        # start rotation
+                        self.publisher_.publish(twist)
 
-                    if (len(lri[0]) > 0):
-                        self.why_stop = 2
-                        # stop moving
-                        self.stopbot()
-                        # find direction with the largest distance from the Lidar
-                        # rotate to that direction
-                        # start moving
-                        self.pick_direction()
+                        # we will use the c_dir_diff variable to see if we can stop rotating
+                        c_dir_diff = c_change_dir
+                        # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
+                        # if the rotation direction was 1.0, then we will want to stop when the c_dir_diff
+                        # becomes -1.0, and vice versa
+                        while (c_change_dir * c_dir_diff > 0):
+                            # allow the callback functions to run
+                            rclpy.spin_once(self)
+                            current_yaw = self.yaw
+                            # convert the current yaw to complex form
+                            c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
+                            # self.get_logger().info('Current Yaw: %f' % math.degrees(current_yaw))
+                            # get difference in angle between current and target
+                            c_change = c_target_yaw / c_yaw
+                            # get the sign to see if we can stop
+                            c_dir_diff = np.sign(c_change.imag)
+                            # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
+                        twist.angular.z = 0.0
+                        self.publisher_.publish(twist)
+                        twist.linear.x = speedchange
+                        self.publisher_.publish(twist)
+                        time.sleep((distance_to_point*self.map_resolution)/speedchange)
+                        twist.linear.x = 0.0
+                        self.publisher_.publish(twist)
+                        twist.angular.z = rotatechange
+                        self.publisher_.publish(twist)
+                        time.sleep(2*math.pi/rotatechange)
+                        twist.angular.z = 0.0
+                        self.publisher_.publish(twist)
+
+
+
+
+                # if self.laser_range.size != 0:
+                #     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+                #
+                #     if (len(lri[0]) > 0):
+                #         self.why_stop = 2
+                #         # stop moving
+                #         self.stopbot()
+                #         # find direction with the largest distance from the Lidar
+                #         # rotate to that direction
+                #         # start moving
+                #         self.pick_direction()
 
                 # allow the callback functions to run
                 rclpy.spin_once(self)
