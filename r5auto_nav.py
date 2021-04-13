@@ -610,7 +610,7 @@ class AutoNav(Node):
                     # note that self.occdata is y then x
                     bot_position = self.bot_position
                     self.get_logger().info("bot position %s" % str(bot_position))
-                    points_to_move = self.bfs(self.occdata, bot_position)
+                    points_to_move = self.bfs(np.transpose(self.occdata), bot_position)
                     map_res = self.map_resolution
 
                     # plt.cla()
@@ -640,7 +640,7 @@ class AutoNav(Node):
                         # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
                         distance_to_point = math.dist(first_point, bot_position)
                         angle_to_move = math.degrees(
-                            math.atan2(first_point[1] - bot_position[1], first_point[0] - bot_position[0]))
+                            math.atan2(first_point[1] - bot_position[1], first_point[0] - bot_position[0])) % 360
                         self.get_logger().info("bot position (%d, %d) first point (%d, %d) angle to move %f" % (
                             bot_position[0], bot_position[1], first_point[0], first_point[1], angle_to_move))
                         current_yaw = self.yaw
