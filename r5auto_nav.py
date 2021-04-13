@@ -225,10 +225,10 @@ class AutoNav(Node):
         img_transformed = Image.new(img.mode, (new_width, new_height), map_bg_color)
         img_transformed.paste(img, (left, top))
 
-        # rotated = img.rotate(90, expand=True, fillcolor=map_bg_color)
+        rotated = img.rotate(90, expand=True, fillcolor=map_bg_color)
 
         self.occdata = np.array(img)
-        plt.cla()
+        plt.clf()
         plt.grid()
         plt.imshow(img, cmap='gray', origin='lower')
         plt.draw_all()
@@ -260,7 +260,7 @@ class AutoNav(Node):
 
             path = queue.pop(0)
 
-            if isinstance(path[0], int):
+            if (isinstance(path[0], int)):
                 p = path
                 l = 1
             else:
@@ -282,7 +282,8 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < len(graph[0]) and [x + 1, y] not in visited and graph[x + 1, y] != 3:
+            if x + 1 < len(graph[0]) - 3 and [x + 1, y] not in visited and graph[x + 1, y] != 3 and graph[
+                x + 2, y] != 3 and graph[x + 3, y] != 3 and graph[x + 4, y] != 3:
                 if l == 1:
                     q = [path, [x + 1, y]]
                     queue.append(q)
@@ -306,8 +307,9 @@ class AutoNav(Node):
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[
-                x + 1, y + 1] != 3:
+            if x + 1 < len(graph[0]) - 3 and y + 1 < len(graph) - 3 and [x + 1, y + 1] not in visited and graph[
+                x + 1, y + 1] != 3 and graph[x + 2, y + 2] != 3 and graph[x + 3, y + 3] != 3 and graph[
+                x + 4, y + 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -334,7 +336,8 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x + 1, y + 1])
             # node x y+1
-            if y + 1 < len(graph) and [x, y + 1] not in visited and graph[x, y + 1] != 3:
+            if y + 1 < len(graph) - 3 and [x, y + 1] not in visited and graph[x, y + 1] != 3 and graph[
+                x, y + 2] != 3 and graph[x, y + 3] != 3 and graph[x, y + 4] != 3:
 
                 if (l == 1):
                     q = []
@@ -361,7 +364,9 @@ class AutoNav(Node):
                         return new
                 visited.append([x, y + 1])
             # node x-1 y+1
-            if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3:
+            if x - 1 > -4 and y + 1 < len(graph) - 3 and [x - 1, y + 1] not in visited and graph[
+                x - 1, y + 1] != 3 and \
+                    graph[x - 2, y + 2] != 3 and graph[x - 3, y + 3] != 3 and graph[x - 4, y + 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -388,7 +393,8 @@ class AutoNav(Node):
                 visited.append([x - 1, y + 1])
 
             # node x-1 y
-            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 3:
+            if x - 1 > -4 and [x - 1, y] not in visited and graph[x - 1, y] != 3 and graph[x - 2, y] != 3 and graph[
+                x - 3, y] != 3 and graph[x - 4, y] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -415,7 +421,8 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x - 1, y])
             # node x-1 y-1
-            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3:
+            if x - 1 > -4 and y - 1 > -4 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3 and graph[
+                x - 2, y - 2] != 3 and graph[x - 3, y - 3] != 3 and graph[x - 4, y - 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -442,7 +449,8 @@ class AutoNav(Node):
                 visited.append([x - 1, y - 1])
 
             # node x y-1
-            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 3:
+            if y - 1 > -4 and [x, y - 1] not in visited and graph[x, y - 1] != 3 and graph[x, y - 2] != 3 and graph[
+                x, y - 3] != 3 and graph[x, y - 4] != 3:
 
                 if (l == 1):
                     q = []
@@ -470,7 +478,9 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x, y - 1])
             # node x+1 y-1
-            if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3:
+            if x + 1 < len(graph[0]) - 3 and y - 1 > -4 and [x + 1, y - 1] not in visited and graph[
+                x + 1, y - 1] != 3 and graph[x + 2, y - 2] != 3 and graph[x + 3, y - 3] != 3 and graph[
+                x + 4, y - 4] != 3:
 
                 # new_path.append([x+1,y-1])
                 if (l == 1):
@@ -636,7 +646,7 @@ class AutoNav(Node):
                         # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
                         distance_to_point = math.dist(first_point, bot_position)
                         angle_to_move = math.degrees(
-                            math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
+                            math.atan2(first_point[1] - bot_position[1], first_point[0] - bot_position[0])) % 360
                         self.get_logger().info("bot position (%d, %d) first point (%d, %d) angle to move %f" % (
                             bot_position[0], bot_position[1], first_point[0], first_point[1], angle_to_move))
                         current_yaw = self.yaw
