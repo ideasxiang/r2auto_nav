@@ -35,7 +35,7 @@ from PIL import Image, ImageDraw
 rotatechange = 0.5
 speedchange = 0.1
 occ_bins = [-1, 0, 50, 100]
-stop_distance = 0.2
+stop_distance = 0.4
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -97,8 +97,8 @@ class AutoNav(Node):
         self.pitch = 0
         self.yaw = 0
         self.shoot = 0
-        self.point_next = (0, 0)
         self.map_resolution = 0
+        self.bot_position = [0, 0]
         self.points_to_move = np.array([])
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
@@ -180,6 +180,8 @@ class AutoNav(Node):
         # get map grid positions for x, y position
         grid_x = round((cur_pos.x - map_origin.x) / map_res)
         grid_y = round(((cur_pos.y - map_origin.y) / map_res))
+        self.bot_position[0] = grid_y
+        self.bot_position[1] = grid_x
         # self.get_logger().info('Grid Y: %i Grid X: %i' % (grid_y, grid_x))
 
         # binnum go from 1 to 3 so we can use uint8
@@ -223,11 +225,23 @@ class AutoNav(Node):
         img_transformed = Image.new(img.mode, (new_width, new_height), map_bg_color)
         img_transformed.paste(img, (left, top))
 
-        self.occdata = np.array(img_transformed)
+        self.occdata = np.array(img)
+        plt.clf()
+        plt.grid()
+        plt.imshow(img, cmap='gray', origin='lower')
+        plt.draw_all()
+        plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+        # plt.cla()
+        # pause to make sure the plot gets created
+        plt.pause(0.00000000001)
         # print to file
         np.savetxt(mapfile, self.occdata)
 
     def bfs(self, graph, start):
+        ###
+        # Note X and Y is swap
+        ###
+
         self.get_logger().info("Running BFS")
         # maintain a queue of paths
         queue = []
@@ -266,7 +280,7 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < len(graph[0]) and [x + 1, y] not in visited and graph[x + 1, y] != 3:
+            if x + 1 < len(graph[0])-3 and [x + 1, y] not in visited and graph[x + 1, y] != 3 and graph[x + 2, y] != 3 and graph[x + 3, y] != 3 and graph[x + 4, y] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -292,7 +306,7 @@ class AutoNav(Node):
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 3:
+            if x + 1 < len(graph[0])-3 and y + 1 < len(graph)-3 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 3 and graph[x + 2, y + 2] != 3 and graph[x + 3, y + 3] != 3 and graph[x + 4, y + 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -319,7 +333,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x + 1, y + 1])
             # node x y+1
-            if y + 1 < len(graph) and [x, y + 1] not in visited and graph[x, y + 1] != 3:
+            if y + 1 < len(graph)-3 and [x, y + 1] not in visited and graph[x, y + 1] != 3 and graph[x, y + 2] != 3 and graph[x, y + 3] != 3 and graph[x, y + 4] != 3:
 
                 if (l == 1):
                     q = []
@@ -346,7 +360,7 @@ class AutoNav(Node):
                         return new
                 visited.append([x, y + 1])
             # node x-1 y+1
-            if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3:
+            if x - 1 > -4 and y + 1 < len(graph)-3 and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3 and graph[x - 2, y + 2] != 3 and graph[x - 3, y + 3] != 3 and graph[x - 4, y + 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -373,7 +387,7 @@ class AutoNav(Node):
                 visited.append([x - 1, y + 1])
 
             # node x-1 y
-            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 3:
+            if x - 1 > -4 and [x - 1, y] not in visited and graph[x - 1, y] != 3 and graph[x - 2, y] != 3 and graph[x - 3, y] != 3 and graph[x - 4, y] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -400,7 +414,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x - 1, y])
             # node x-1 y-1
-            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3:
+            if x - 1 > -4 and y - 1 > -4 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3 and graph[x - 2, y - 2] != 3 and graph[x - 3, y - 3] != 3 and graph[x - 4, y - 4] != 3:
                 if (l == 1):
                     q = []
                     q.append(path)
@@ -427,7 +441,7 @@ class AutoNav(Node):
                 visited.append([x - 1, y - 1])
 
             # node x y-1
-            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 3:
+            if y - 1 > -4 and [x, y - 1] not in visited and graph[x, y - 1] != 3 and graph[x, y - 2] != 3 and graph[x, y - 3] != 3 and graph[x, y - 4] != 3:
 
                 if (l == 1):
                     q = []
@@ -455,7 +469,7 @@ class AutoNav(Node):
                 # new_path.append([x+1,y])
                 visited.append([x, y - 1])
             # node x+1 y-1
-            if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3:
+            if x + 1 < len(graph[0])-3 and y - 1 > -4 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3 and graph[x + 2, y - 2] != 3 and graph[x + 3, y - 3] != 3 and graph[x + 4, y - 4] != 3:
 
                 # new_path.append([x+1,y-1])
                 if (l == 1):
@@ -599,11 +613,13 @@ class AutoNav(Node):
                 twist = Twist()
                 if len(self.occdata) != 0:
                     # note that self.occdata is y then x
-                    bot_position = (len(self.occdata)//2, len(self.occdata[0])//2)
-                    self.get_logger().info("bot position %s" % str(bot_position))
+                    bot_position = self.bot_position
+                    # self.get_logger().info("bot position %s" % str(bot_position))
                     points_to_move = self.bfs(self.occdata, bot_position)
+                    map_res = self.map_resolution
                     while len(points_to_move) != 0:
                         if self.shoot == 1:
+                            self.shoot = 0
                             self.stopbot()
                             msg2 = String()
                             msg2.data = "fly"
@@ -612,16 +628,15 @@ class AutoNav(Node):
 
                         self.get_logger().info("%s" % str(points_to_move))
                         first_point = points_to_move.pop(0)
-                        # again y then x
-                        self.point_next = (first_point[0], first_point[1])
                         # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
                         distance_to_point = math.dist(first_point, bot_position)
-                        angle_to_move = math.degrees(math.atan2(bot_position[0] - first_point[0], bot_position[1] - first_point[1]))
-                        self.get_logger().info("angle to move %d" % angle_to_move)
+                        angle_to_move = math.degrees(math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
+                        self.get_logger().info("bot position (%d, %d) first point (%d, %d) angle to move %f" % (bot_position[0],  bot_position[1], first_point[0], first_point[1], angle_to_move))
                         current_yaw = self.yaw
                         self.get_logger().info('Current: %f' % math.degrees(current_yaw))
                         c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                        target_yaw = math.radians(angle_to_move % 360)
+                        target_yaw = math.radians(angle_to_move) - math.radians(40)
+                        # target_yaw = math.radians(315)
                         c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
                         self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
                         c_change = c_target_yaw / c_yaw
@@ -655,14 +670,15 @@ class AutoNav(Node):
                         self.publisher_.publish(twist)
                         twist.linear.x = speedchange
                         self.publisher_.publish(twist)
-                        time.sleep((distance_to_point*self.map_resolution)/speedchange)
+                        time.sleep((distance_to_point*map_res)/speedchange)
                         twist.linear.x = 0.0
                         self.publisher_.publish(twist)
-                        twist.angular.z = rotatechange
-                        self.publisher_.publish(twist)
-                        time.sleep(2*math.pi/rotatechange)
-                        twist.angular.z = 0.0
-                        self.publisher_.publish(twist)
+                        bot_position = first_point
+                    # twist.angular.z = rotatechange
+                    # self.publisher_.publish(twist)
+                    # time.sleep(2*math.pi/rotatechange)
+                    # twist.angular.z = 0.0
+                    # self.publisher_.publish(twist)
 
 
 
