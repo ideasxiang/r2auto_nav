@@ -131,7 +131,7 @@ class AutoNav(Node):
         self.get_logger().info("In temp callback")
         self.get_logger().info("%s" % msg.data)
         obj_temp, ambient_temp = str(msg.data).split(',')
-        if float(obj_temp) > 31:
+        if float(obj_temp) > 31.0:
             self.shoot = 1
 
     def occ_callback(self, msg):
