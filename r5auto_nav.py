@@ -42,6 +42,9 @@ scanfile = 'lidar.txt'
 mapfile = f"newmap{time.strftime('%Y%m%d%H%M%S')}.txt"
 laserfile = 'laser.txt'
 map_bg_color = 1
+ambient=29.0
+object=35.0
+threshold=(ambient+object)/2
 
 
 # code from https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
@@ -131,6 +134,9 @@ class AutoNav(Node):
         self.get_logger().info("In temp callback")
         self.get_logger().info("%s" % msg.data)
         obj_temp, ambient_temp = str(msg.data).split(',')
+        if(float(obj_temp)>=threshold):
+            threshold=float(obj_temp)
+
         if float(obj_temp) > 31.0:
             self.shoot = 1
 

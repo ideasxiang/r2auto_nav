@@ -19,13 +19,14 @@ from geometry_msgs.msg import Twist
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
+from std_msgs.msg import String
 import numpy as np
 import math
 import cmath
 import time
 
 # constants
-rotatechange = 0.6
+rotatechange = 0.2
 speedchange = 0.2
 occ_bins = [-1, 0, 100, 101]
 stop_distance = 0.5
@@ -66,6 +67,7 @@ class AutoNav(Node):
 
         # create publisher for moving TurtleBot
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.fly_ = self.create_publisher(String, 'fly', 11)
         # self.get_logger().info('Created publisher')
 
         # create subscription to track orientation
@@ -74,12 +76,19 @@ class AutoNav(Node):
             'odom',
             self.odom_callback,
             10)
+        self.temp_subscription = self.create_subscription(
+            String,
+            'temp',
+            self.temp,
+            12)
         # self.get_logger().info('Created subscriber')
         self.odom_subscription  # prevent unused variable warning
+        self.temp_subscription
         # initialize variables
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
+        self.shoot = 0
 
         # create subscription to track occupancy
         self.occ_subscription = self.create_subscription(
@@ -104,6 +113,46 @@ class AutoNav(Node):
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
+
+    def temp(self, msg):
+        self.get_logger().info("In temp callback")
+        self.get_logger().info("%s" % msg.data)
+        obj_temp, ambient_temp = str(msg.data).split(',')
+        msg2 = String()
+        pwm = 5.5
+        max_pwm = 7.0
+        if(float(obj_temp)>=31.0):
+            # self.get_logger().info("Detect obj %s threshold %f" % (obj_temp, self.threshold))
+            # while (float(obj_temp) >= self.threshold):
+            #     self.get_logger().info("Right obj %s threshold %f" % (obj_temp, self.threshold))
+            #     threshold = float(obj_temp)
+            #     self.stopbot()
+            #     self.rotatebot(2)
+            # self.stopbot()
+            # self.rotatebot(-2)
+            # while (float(obj_temp) >= self.threshold):
+            #     self.get_logger().info("Left obj %s threshold %f" % (obj_temp, self.threshold))
+            #     threshold = float(obj_temp)
+            #     self.stopbot()
+            #     self.rotatebot(-2)
+            # self.stopbot()
+            # self.rotatebot(2)
+            self.stopbot()
+            msg2.data = f"servo,{pwm}"
+            self.fly_.publish(msg2)
+            while(float(obj_temp)>=31.0) and pwm < max_pwm:
+                pwm += 0.5
+                msg2.data = f"servo,{pwm}"
+                self.fly_.publish(msg2)
+            msg2.data='fly'
+            self.fly_.publish(msg2)
+            time.sleep(20)
+            msg2.data = f"servo,{5.5}"
+            self.fly_.publish(msg2)
+            self.pick_direction()
+
+
+
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
