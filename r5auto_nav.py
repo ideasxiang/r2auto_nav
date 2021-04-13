@@ -96,6 +96,7 @@ class AutoNav(Node):
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
+        self.initialize = 0
         self.shoot = 0
         self.map_resolution = 0
         self.bot_position = [0, 0]
@@ -126,6 +127,9 @@ class AutoNav(Node):
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
+        if self.initialize == 0:
+            self.yaw = 0
+            self.initialize = 1
 
     def temp(self, msg):
         self.get_logger().info("In temp callback")
@@ -614,7 +618,7 @@ class AutoNav(Node):
                 if len(self.occdata) != 0:
                     # note that self.occdata is y then x
                     bot_position = self.bot_position
-                    # self.get_logger().info("bot position %s" % str(bot_position))
+                    self.get_logger().info("bot position %s" % str(bot_position))
                     points_to_move = self.bfs(self.occdata, bot_position)
                     map_res = self.map_resolution
                     while len(points_to_move) != 0:
@@ -626,8 +630,13 @@ class AutoNav(Node):
                             self.fly_.publish(msg2)
                             time.sleep(20)
 
-                        self.get_logger().info("%s" % str(points_to_move))
+                        # if len(points_to_move) > 1:
+                        #     points_to_move.pop(0)
+
                         first_point = points_to_move.pop(0)
+                        temp_point = first_point
+                        first_point = [temp_point[1], temp_point[0]]
+                        self.get_logger().info("%s" % str(points_to_move))
                         # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
                         distance_to_point = math.dist(first_point, bot_position)
                         angle_to_move = math.degrees(math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
@@ -635,8 +644,8 @@ class AutoNav(Node):
                         current_yaw = self.yaw
                         self.get_logger().info('Current: %f' % math.degrees(current_yaw))
                         c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                        target_yaw = math.radians(angle_to_move) - math.radians(40)
-                        # target_yaw = math.radians(315)
+                        target_yaw = math.radians(angle_to_move)
+                        # target_yaw = math.radians(0)
                         c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
                         self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
                         c_change = c_target_yaw / c_yaw
