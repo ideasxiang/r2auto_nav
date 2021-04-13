@@ -96,7 +96,6 @@ class AutoNav(Node):
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
-        self.initialize = 0
         self.shoot = 0
         self.map_resolution = 0
         self.bot_position = [0, 0]
@@ -127,9 +126,6 @@ class AutoNav(Node):
         orientation_quat = msg.pose.pose.orientation
         self.roll, self.pitch, self.yaw = euler_from_quaternion(orientation_quat.x, orientation_quat.y,
                                                                 orientation_quat.z, orientation_quat.w)
-        if self.initialize == 0:
-            self.yaw = 0
-            self.initialize = 1
 
     def temp(self, msg):
         self.get_logger().info("In temp callback")
@@ -284,222 +280,258 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < len(graph[0])-3 and [x + 1, y] not in visited and graph[x + 1, y] != 3 and graph[x + 2, y] != 3 and graph[x + 3, y] != 3 and graph[x + 4, y] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x + 1, y])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x + 1, y] == 1:
-                        # print("ccc")
+            if x + 1 < len(graph[0]) - 3 and y + 1 < len(graph) - 3 and x - 1 > -4 and y - 1 > -4 and graph[
+                x + 0, y + 3] != 3 and graph[x + 0, y + 4] != 3 and graph[x + 1, y + 3] != 3 and graph[
+                x + 1, y + 4] != 3 and graph[x + 2, y + 3] != 3 and graph[x + 2, y + 4] != 3 and graph[
+                x + 3, y + 3] != 3 and graph[x + 3, y + 4] != 3 and graph[x + 4, y + 3] != 3 and graph[
+                x + 4, y + 4] != 3 and graph[x - 1, y + 3] != 3 and graph[x - 1, y + 4] != 3 and graph[
+                x - 2, y + 3] != 3 and graph[x - 2, y + 4] != 3 and graph[x - 3, y + 3] != 3 and graph[
+                x - 3, y + 4] != 3 and graph[x - 4, y + 3] != 3 and graph[x - 4, y + 4] != 3 and graph[
+                x - 0, y - 3] != 3 and graph[x - 0, y - 4] != 3 and graph[x - 1, y - 3] != 3 and graph[
+                x - 1, y - 4] != 3 and graph[x - 2, y - 3] != 3 and graph[x - 2, y - 4] != 3 and graph[
+                x - 3, y - 3] != 3 and graph[x - 3, y - 4] != 3 and graph[x - 4, y - 3] != 3 and graph[
+                x - 4, y - 4] != 3 and graph[x + 0, y - 3] != 3 and graph[x + 0, y - 4] != 3 and graph[
+                x + 1, y - 3] != 3 and graph[x + 1, y - 4] != 3 and graph[x + 2, y - 3] != 3 and graph[
+                x + 2, y - 4] != 3 and graph[x + 3, y - 3] != 3 and graph[x + 3, y - 4] != 3 and graph[
+                x + 4, y - 3] != 3 and graph[x + 4, y - 4] != 3 and graph[x + 3, y + 0] != 3 and graph[
+                x + 3, y + 1] != 3 and graph[x + 3, y + 2] != 3 and graph[x + 3, y + 3] != 3 and graph[
+                x + 3, y + 4] != 3 and graph[x + 4, y + 0] != 3 and graph[x + 4, y + 1] != 3 and graph[
+                x + 4, y + 2] != 3 and graph[x + 4, y + 3] != 3 and graph[x + 4, y + 4] != 3 and graph[
+                x + 3, y - 0] != 3 and graph[x + 3, y - 1] != 3 and graph[x + 3, y - 2] != 3 and graph[
+                x + 3, y - 3] != 3 and graph[x + 3, y - 4] != 3 and graph[x + 4, y - 0] != 3 and graph[
+                x + 4, y - 1] != 3 and graph[x + 4, y - 2] != 3 and graph[x + 4, y - 3] != 3 and graph[
+                x + 4, y - 4] != 3 and graph[x - 3, y - 0] != 3 and graph[x - 3, y - 1] != 3 and graph[
+                x - 3, y - 2] != 3 and graph[x - 3, y - 3] != 3 and graph[x - 3, y - 4] != 3 and graph[
+                x - 4, y - 0] != 3 and graph[x - 4, y - 1] != 3 and graph[x - 4, y - 2] != 3 and graph[
+                x - 4, y - 3] != 3 and graph[x - 4, y - 4] != 3 and graph[x - 3, y + 0] != 3 and graph[
+                x - 3, y + 1] != 3 and graph[x - 3, y + 2] != 3 and graph[x - 3, y + 3] != 3 and graph[
+                x - 3, y + 4] != 3 and graph[x - 4, y + 0] != 3 and graph[x - 4, y + 1] != 3 and graph[
+                x - 4, y + 2] != 3 and graph[x - 4, y + 3] != 3 and graph[x - 4, y + 4]:
+                if x + 1 < len(graph[0]) - 3 and [x + 1, y] not in visited and graph[x + 1, y] != 3 and graph[
+                    x + 2, y] != 3 and graph[x + 3, y] != 3 and graph[x + 4, y] != 3:
+                    if l == 1:
+                        q = [path, [x + 1, y]]
+                        queue.append(q)
+                        if graph[x + 1, y] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-                        i = i + 1
-                    new.append([x + 1, y])
-                    queue.append(new)
-                    if graph[x + 1, y] == 1:
-                        # print("ccc")
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
+                            i = i + 1
+                        new.append([x + 1, y])
+                        queue.append(new)
+                        if graph[x + 1, y] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
+                            return new
+                    # new_path.append([x+1,y])
 
-                visited.append([x + 1, y])
-            # node x+1 y+1
-            if x + 1 < len(graph[0])-3 and y + 1 < len(graph)-3 and [x + 1, y + 1] not in visited and graph[x + 1, y + 1] != 3 and graph[x + 2, y + 2] != 3 and graph[x + 3, y + 3] != 3 and graph[x + 4, y + 4] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x + 1, y + 1] == 1:
-                        # print("ccc")
+                    visited.append([x + 1, y])
+                # node x+1 y+1
+                if x + 1 < len(graph[0]) - 3 and y + 1 < len(graph) - 3 and [x + 1, y + 1] not in visited and graph[
+                    x + 1, y + 1] != 3 and graph[x + 2, y + 2] != 3 and graph[x + 3, y + 3] != 3 and graph[
+                    x + 4, y + 4] != 3:
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x + 1, y + 1] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x + 1, y + 1])
-                    queue.append(new)
-                    if graph[x + 1, y + 1] == 1:
-                        # print("ccc")
+                        new.append([x + 1, y + 1])
+                        queue.append(new)
+                        if graph[x + 1, y + 1] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x + 1, y + 1])
-            # node x y+1
-            if y + 1 < len(graph)-3 and [x, y + 1] not in visited and graph[x, y + 1] != 3 and graph[x, y + 2] != 3 and graph[x, y + 3] != 3 and graph[x, y + 4] != 3:
+                            return new
+                    # new_path.append([x+1,y])
+                    visited.append([x + 1, y + 1])
+                # node x y+1
+                if y + 1 < len(graph) - 3 and [x, y + 1] not in visited and graph[x, y + 1] != 3 and graph[
+                    x, y + 2] != 3 and graph[x, y + 3] != 3 and graph[x, y + 4] != 3:
 
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x, y + 1] == 1:
-                        # print("ccc")
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x, y + 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x, y + 1] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x, y + 1])
-                    queue.append(new)
-                    if graph[x, y + 1] == 1:
-                        # print("ccc")
+                        new.append([x, y + 1])
+                        queue.append(new)
+                        if graph[x, y + 1] == 1:
+                            # print("ccc")
 
-                        return new
-                visited.append([x, y + 1])
-            # node x-1 y+1
-            if x - 1 > -4 and y + 1 < len(graph)-3 and [x - 1, y + 1] not in visited and graph[x - 1, y + 1] != 3 and graph[x - 2, y + 2] != 3 and graph[x - 3, y + 3] != 3 and graph[x - 4, y + 4] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y + 1] == 1:
-                        # print("ccc")
+                            return new
+                    visited.append([x, y + 1])
+                # node x-1 y+1
+                if x - 1 > -4 and y + 1 < len(graph) - 3 and [x - 1, y + 1] not in visited and graph[
+                    x - 1, y + 1] != 3 and \
+                        graph[x - 2, y + 2] != 3 and graph[x - 3, y + 3] != 3 and graph[x - 4, y + 4] != 3:
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x - 1, y + 1] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x - 1, y + 1])
-                    queue.append(new)
-                    if graph[x - 1, y + 1] == 1:
-                        # print("ccc")
+                        new.append([x - 1, y + 1])
+                        queue.append(new)
+                        if graph[x - 1, y + 1] == 1:
+                            # print("ccc")
 
-                        return new
-                visited.append([x - 1, y + 1])
+                            return new
+                    visited.append([x - 1, y + 1])
 
-            # node x-1 y
-            if x - 1 > -4 and [x - 1, y] not in visited and graph[x - 1, y] != 3 and graph[x - 2, y] != 3 and graph[x - 3, y] != 3 and graph[x - 4, y] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y] == 1:
-                        # print("ccc")
+                # node x-1 y
+                if x - 1 > -4 and [x - 1, y] not in visited and graph[x - 1, y] != 3 and graph[x - 2, y] != 3 and graph[
+                    x - 3, y] != 3 and graph[x - 4, y] != 3:
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x - 1, y])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x - 1, y] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x - 1, y])
-                    queue.append(new)
-                    if graph[x - 1, y] == 1:
-                        # print("ccc")
+                        new.append([x - 1, y])
+                        queue.append(new)
+                        if graph[x - 1, y] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x - 1, y])
-            # node x-1 y-1
-            if x - 1 > -4 and y - 1 > -4 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3 and graph[x - 2, y - 2] != 3 and graph[x - 3, y - 3] != 3 and graph[x - 4, y - 4] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y - 1] == 1:
-                        print("ccc")
+                            return new
+                    # new_path.append([x+1,y])
+                    visited.append([x - 1, y])
+                # node x-1 y-1
+                if x - 1 > -4 and y - 1 > -4 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3 and graph[
+                    x - 2, y - 2] != 3 and graph[x - 3, y - 3] != 3 and graph[x - 4, y - 4] != 3:
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x - 1, y - 1] == 1:
+                            print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x - 1, y - 1])
-                    queue.append(new)
-                    if graph[x - 1, y - 1] == 1:
-                        # print("ccc")
+                        new.append([x - 1, y - 1])
+                        queue.append(new)
+                        if graph[x - 1, y - 1] == 1:
+                            # print("ccc")
 
-                        return new
-                visited.append([x - 1, y - 1])
+                            return new
+                    visited.append([x - 1, y - 1])
 
-            # node x y-1
-            if y - 1 > -4 and [x, y - 1] not in visited and graph[x, y - 1] != 3 and graph[x, y - 2] != 3 and graph[x, y - 3] != 3 and graph[x, y - 4] != 3:
+                # node x y-1
+                if y - 1 > -4 and [x, y - 1] not in visited and graph[x, y - 1] != 3 and graph[x, y - 2] != 3 and graph[
+                    x, y - 3] != 3 and graph[x, y - 4] != 3:
 
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x, y - 1] == 1:
-                        # print("ccc")
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x, y - 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x, y - 1] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x, y - 1])
-                    queue.append(new)
-                    if graph[x, y - 1] == 1:
-                        # print("ccc")
+                        new.append([x, y - 1])
+                        queue.append(new)
+                        if graph[x, y - 1] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x, y - 1])
-            # node x+1 y-1
-            if x + 1 < len(graph[0])-3 and y - 1 > -4 and [x + 1, y - 1] not in visited and graph[x + 1, y - 1] != 3 and graph[x + 2, y - 2] != 3 and graph[x + 3, y - 3] != 3 and graph[x + 4, y - 4] != 3:
+                            return new
+                    # new_path.append([x+1,y])
+                    visited.append([x, y - 1])
+                # node x+1 y-1
+                if x + 1 < len(graph[0]) - 3 and y - 1 > -4 and [x + 1, y - 1] not in visited and graph[
+                    x + 1, y - 1] != 3 and graph[x + 2, y - 2] != 3 and graph[x + 3, y - 3] != 3 and graph[
+                    x + 4, y - 4] != 3:
 
-                # new_path.append([x+1,y-1])
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x + 1, y - 1] == 1:
-                        # print("ccc")
+                    # new_path.append([x+1,y-1])
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x + 1, y - 1] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x + 1, y - 1])
-                    queue.append(new)
-                    if graph[x + 1, y - 1] == 1:
-                        # print("ccc")
+                        new.append([x + 1, y - 1])
+                        queue.append(new)
+                        if graph[x + 1, y - 1] == 1:
+                            # print("ccc")
 
-                        return new
-                visited.append([x + 1, y - 1])
+                            return new
+                    visited.append([x + 1, y - 1])
         # print(len(queue))
 
         return None
@@ -570,13 +602,14 @@ class AutoNav(Node):
         # self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             if len(self.occdata) != 0:
-                bot_position = (len(self.occdata)//2, len(self.occdata[0])//2)
+                bot_position = (len(self.occdata) // 2, len(self.occdata[0]) // 2)
                 points_to_move = self.bfs(self.occdata, bot_position)
                 while len(points_to_move) != 0:
                     first_point = points_to_move.pop(0)
                     distance_to_point = math.dist(first_point, bot_position)
-                    angle_to_move = math.degrees(math.atan2(bot_position[1] - first_point[1], bot_position[0] - first_point[0]))
-                    target_yaw = math.radians(angle_to_move%360)
+                    angle_to_move = math.degrees(
+                        math.atan2(bot_position[1] - first_point[1], bot_position[0] - first_point[0]))
+                    target_yaw = math.radians(angle_to_move % 360)
                     lr2i = target_yaw
             else:
                 lr2i = 90
@@ -634,13 +667,13 @@ class AutoNav(Node):
                         #     points_to_move.pop(0)
 
                         first_point = points_to_move.pop(0)
-                        temp_point = first_point
-                        first_point = [temp_point[1], temp_point[0]]
                         self.get_logger().info("%s" % str(points_to_move))
                         # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
                         distance_to_point = math.dist(first_point, bot_position)
-                        angle_to_move = math.degrees(math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
-                        self.get_logger().info("bot position (%d, %d) first point (%d, %d) angle to move %f" % (bot_position[0],  bot_position[1], first_point[0], first_point[1], angle_to_move))
+                        angle_to_move = math.degrees(
+                            math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
+                        self.get_logger().info("bot position (%d, %d) first point (%d, %d) angle to move %f" % (
+                            bot_position[0], bot_position[1], first_point[0], first_point[1], angle_to_move))
                         current_yaw = self.yaw
                         self.get_logger().info('Current: %f' % math.degrees(current_yaw))
                         c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
@@ -679,7 +712,7 @@ class AutoNav(Node):
                         self.publisher_.publish(twist)
                         twist.linear.x = speedchange
                         self.publisher_.publish(twist)
-                        time.sleep((distance_to_point*map_res)/speedchange)
+                        time.sleep((distance_to_point * map_res) / speedchange)
                         twist.linear.x = 0.0
                         self.publisher_.publish(twist)
                         bot_position = first_point
@@ -688,9 +721,6 @@ class AutoNav(Node):
                     # time.sleep(2*math.pi/rotatechange)
                     # twist.angular.z = 0.0
                     # self.publisher_.publish(twist)
-
-
-
 
                 # if self.laser_range.size != 0:
                 #     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
