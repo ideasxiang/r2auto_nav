@@ -29,9 +29,9 @@ import time
 rotatechange = 0.6
 speedchange = -0.2
 occ_bins = [-1, 0, 100, 101]
-stop_distance = 0.5
+stop_distance = 0.4
 front_angle = 30
-front_angles = range(150, 210, 1)
+front_angles = range(160, 200, 1)
 scanfile = 'lidar.txt'
 mapfile = 'map.txt'
 

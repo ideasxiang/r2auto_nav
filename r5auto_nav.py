@@ -134,11 +134,38 @@ class AutoNav(Node):
         self.get_logger().info("In temp callback")
         self.get_logger().info("%s" % msg.data)
         obj_temp, ambient_temp = str(msg.data).split(',')
-        if(float(obj_temp)>=threshold):
-            threshold=float(obj_temp)
-
-        if float(obj_temp) > 31.0:
-            self.shoot = 1
+        msg2 = String()
+        pwm = 5.5
+        max_pwm = 7.0
+        if (float(obj_temp) >= 31.0):
+            # self.get_logger().info("Detect obj %s threshold %f" % (obj_temp, self.threshold))
+            # while (float(obj_temp) >= self.threshold):
+            #     self.get_logger().info("Right obj %s threshold %f" % (obj_temp, self.threshold))
+            #     threshold = float(obj_temp)
+            #     self.stopbot()
+            #     self.rotatebot(2)
+            # self.stopbot()
+            # self.rotatebot(-2)
+            # while (float(obj_temp) >= self.threshold):
+            #     self.get_logger().info("Left obj %s threshold %f" % (obj_temp, self.threshold))
+            #     threshold = float(obj_temp)
+            #     self.stopbot()
+            #     self.rotatebot(-2)
+            # self.stopbot()
+            # self.rotatebot(2)
+            self.stopbot()
+            msg2.data = f"servo,{pwm}"
+            self.fly_.publish(msg2)
+            while (float(obj_temp) >= 31.0) and pwm < max_pwm:
+                pwm += 0.5
+                msg2.data = f"servo,{pwm}"
+                self.fly_.publish(msg2)
+            msg2.data = 'fly'
+            self.fly_.publish(msg2)
+            time.sleep(20)
+            msg2.data = f"servo,{5.5}"
+            self.fly_.publish(msg2)
+            self.pick_direction()
 
     def occ_callback(self, msg):
         # self.get_logger().info('In occ_callback')
@@ -636,13 +663,6 @@ class AutoNav(Node):
                     points_to_move = self.bfs(self.occdata, bot_position)
                     map_res = self.map_resolution
                     while len(points_to_move) != 0:
-                        if self.shoot == 1:
-                            self.shoot = 0
-                            self.stopbot()
-                            msg2 = String()
-                            msg2.data = "fly"
-                            self.fly_.publish(msg2)
-                            time.sleep(20)
 
                         # if len(points_to_move) > 1:
                         #     points_to_move.pop(0)
