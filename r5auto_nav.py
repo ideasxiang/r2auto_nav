@@ -34,8 +34,8 @@ from PIL import Image, ImageDraw
 # constants
 rotatechange = 0.6
 speedchange = 0.2
-occ_bins = [-1, 0, 50, 100]
-stop_distance = 0.4
+occ_bins = [-1, 0, 60, 100]
+stop_distance = 0.55
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -97,6 +97,7 @@ class AutoNav(Node):
         self.pitch = 0
         self.yaw = 0
         self.shoot = 0
+        self.bfs_run = 0
         self.map_resolution = 0
         self.bot_position = [0, 0]
         self.points_to_move = np.array([])
@@ -230,59 +231,15 @@ class AutoNav(Node):
 
     def bfs(self, graph, start):
 
-        padding = 4
+        padding = 3
 
-        def checkThree(data, x1, y1, dir1):
-            for j in range(0, padding):
-                if dir1 == 0:
-                    x1 += 1
-                if dir1 == 1:
-                    x1 -= 1
-                if dir1 == 2:
-                    y1 += 1
-                if dir1 == 3:
-                    y1 -= 1
-                if data[x1 + 1, y1] == 3:
-                    if checkThreeAgain(data, x1 + 1, y1, 2):
-                        return False
-                    if checkThreeAgain(data, x1 + 1, y1, 3):
-                        return False
-                if data[x1, y1 - 1] == 3:
-                    if checkThreeAgain(data, x1, y1 - 1, 0):
-                        return False
-                    if checkThreeAgain(data, x1, y1 - 1, 1):
-                        return False
-                if data[x1 - 1, y1] == 3:
-                    if checkThreeAgain(data, x1 - 1, y1, 2):
-                        return False
-                    if checkThreeAgain(data, x1 - 1, y1, 3):
-                        return False
-                if data[x1, y1 + 1] == 3:
-                    if checkThreeAgain(data, x1, y1 + 1, 0):
-                        return False
-                    if checkThreeAgain(data, x1, y1 + 1, 1):
+        def checkThree(data, x1, y1):
+            for k in range(-padding, padding+1):
+                for j in range(-padding, padding+1):
+                    if data[x1 + k, y1 + j] == 3:
                         return False
             return True
 
-        def checkThreeAgain(data, x1, y1, dir1):
-            for j in range(0, padding):
-                if dir1 == 0:
-                    x1 += 1
-                if dir1 == 1:
-                    x1 -= 1
-                if dir1 == 2:
-                    y1 += 1
-                if dir1 == 3:
-                    y1 -= 1
-                if data[x1 + 1, y1] == 3:
-                    return True
-                if data[x1, y1 - 1] == 3:
-                    return True
-                if data[x1 - 1, y1] == 3:
-                    return True
-                if data[x1, y1 + 1] == 3:
-                    return True
-            return False
         ###
         # Note X and Y is swap
         ###
@@ -326,7 +283,7 @@ class AutoNav(Node):
             # print(x)
             # print(y)
             if x + 1 < len(graph[0]) - padding - 1 and [x + 1, y] not in visited and graph[x + 1, y] != 3:
-                if checkThree(graph, x + 1, y, 0) and checkThree(graph, x + 1, y, 1) and checkThree(graph, x + 1, y, 2) and checkThree(graph, x + 1, y, 3):
+                if checkThree(graph, x + 1, y):
                     if l == 1:
                         q = [path, [x + 1, y]]
                         queue.append(q)
@@ -350,36 +307,36 @@ class AutoNav(Node):
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            # if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[
-            #     x + 1, y + 1] != 3:
-            #     if (l == 1):
-            #         q = []
-            #         q.append(path)
-            #         q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
-            #         queue.append(q)
-            #         if graph[x + 1, y + 1] == 1:
-            #             # print("ccc")
-            #
-            #             return q
-            #     else:
-            #         i = 0
-            #         new = []
-            #         while (i <= len(path) - 1):
-            #             new.append(path[i])
-            #
-            #             i = i + 1
-            #
-            #         new.append([x + 1, y + 1])
-            #         queue.append(new)
-            #         if graph[x + 1, y + 1] == 1:
-            #             # print("ccc")
-            #
-            #             return new
-            #     # new_path.append([x+1,y])
-            #     visited.append([x + 1, y + 1])
+            if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[
+                x + 1, y + 1] != 3 and checkThree(graph, x + 1, y + 1):
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if graph[x + 1, y + 1] == 1:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x + 1, y + 1])
+                    queue.append(new)
+                    if graph[x + 1, y + 1] == 1:
+                        # print("ccc")
+
+                        return new
+                # new_path.append([x+1,y])
+                visited.append([x + 1, y + 1])
             # node x y+1
             if y + 1 < len(graph) - padding - 1 and [x, y + 1] not in visited and graph[x, y + 1] != 3:
-                if checkThree(graph, x, y + 1, 0) and checkThree(graph, x, y + 1, 1) and checkThree(graph, x, y + 1, 2) and checkThree(graph, x, y + 1, 3):
+                if checkThree(graph, x, y + 1):
                     if (l == 1):
                         q = []
                         q.append(path)
@@ -405,36 +362,36 @@ class AutoNav(Node):
                             return new
                     visited.append([x, y + 1])
             # node x-1 y+1
-            # if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[
-            #     x - 1, y + 1] != 3:
-            #     if (l == 1):
-            #         q = []
-            #         q.append(path)
-            #         q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
-            #         queue.append(q)
-            #         if graph[x - 1, y + 1] == 1:
-            #             # print("ccc")
-            #
-            #             return q
-            #     else:
-            #         i = 0
-            #         new = []
-            #         while (i <= len(path) - 1):
-            #             new.append(path[i])
-            #
-            #             i = i + 1
-            #
-            #         new.append([x - 1, y + 1])
-            #         queue.append(new)
-            #         if graph[x - 1, y + 1] == 1:
-            #             # print("ccc")
-            #
-            #             return new
-            #     visited.append([x - 1, y + 1])
+            if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[
+                x - 1, y + 1] != 3 and checkThree(graph, x - 1, y + 1):
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if graph[x - 1, y + 1] == 1:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x - 1, y + 1])
+                    queue.append(new)
+                    if graph[x - 1, y + 1] == 1:
+                        # print("ccc")
+
+                        return new
+                visited.append([x - 1, y + 1])
 
             # node x-1 y
             if x - 1 > -padding and [x - 1, y] not in visited and graph[x - 1, y] != 3:
-                if checkThree(graph, x - 1, y, 0) and checkThree(graph, x - 1, y, 1) and checkThree(graph, x - 1, y, 2) and checkThree(graph, x - 1, y, 3):
+                if checkThree(graph, x - 1, y):
                     if (l == 1):
                         q = []
                         q.append(path)
@@ -461,35 +418,35 @@ class AutoNav(Node):
                     # new_path.append([x+1,y])
                     visited.append([x - 1, y])
             # node x-1 y-1
-            # if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3:
-            #     if (l == 1):
-            #         q = []
-            #         q.append(path)
-            #         q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
-            #         queue.append(q)
-            #         if graph[x - 1, y - 1] == 1:
-            #             print("ccc")
-            #
-            #             return q
-            #     else:
-            #         i = 0
-            #         new = []
-            #         while (i <= len(path) - 1):
-            #             new.append(path[i])
-            #
-            #             i = i + 1
-            #
-            #         new.append([x - 1, y - 1])
-            #         queue.append(new)
-            #         if graph[x - 1, y - 1] == 1:
-            #             # print("ccc")
-            #
-            #             return new
-            #     visited.append([x - 1, y - 1])
+            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3 and checkThree(graph, x - 1, y - 1):
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if graph[x - 1, y - 1] == 1:
+                        print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x - 1, y - 1])
+                    queue.append(new)
+                    if graph[x - 1, y - 1] == 1:
+                        # print("ccc")
+
+                        return new
+                visited.append([x - 1, y - 1])
 
             # node x y-1
             if y - 1 > -padding and [x, y - 1] not in visited and graph[x, y - 1] != 3:
-                if checkThree(graph, x, y - 1, 0) and checkThree(graph, x, y - 1, 1) and checkThree(graph, x, y - 1, 2) and checkThree(graph, x, y - 1, 3):
+                if checkThree(graph, x, y - 1):
                     if (l == 1):
                         q = []
                         q.append(path)
@@ -516,37 +473,37 @@ class AutoNav(Node):
                     # new_path.append([x+1,y])
                     visited.append([x, y - 1])
             # node x+1 y-1
-            # if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[
-            #     x + 1, y - 1] != 3:
-            #
-            #     # new_path.append([x+1,y-1])
-            #     if (l == 1):
-            #         q = []
-            #         q.append(path)
-            #         q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
-            #         queue.append(q)
-            #         if graph[x + 1, y - 1] == 1:
-            #             # print("ccc")
-            #
-            #             return q
-            #     else:
-            #         i = 0
-            #         new = []
-            #         while (i <= len(path) - 1):
-            #             new.append(path[i])
-            #
-            #             i = i + 1
-            #
-            #         new.append([x + 1, y - 1])
-            #         queue.append(new)
-            #         if graph[x + 1, y - 1] == 1:
-            #             # print("ccc")
-            #
-            #             return new
-            #     visited.append([x + 1, y - 1])
+            if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[
+                x + 1, y - 1] != 3 and checkThree(graph, x + 1, y - 1):
+
+                # new_path.append([x+1,y-1])
+                if (l == 1):
+                    q = []
+                    q.append(path)
+                    q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
+                    queue.append(q)
+                    if graph[x + 1, y - 1] == 1:
+                        # print("ccc")
+
+                        return q
+                else:
+                    i = 0
+                    new = []
+                    while (i <= len(path) - 1):
+                        new.append(path[i])
+
+                        i = i + 1
+
+                    new.append([x + 1, y - 1])
+                    queue.append(new)
+                    if graph[x + 1, y - 1] == 1:
+                        # print("ccc")
+
+                        return new
+                visited.append([x + 1, y - 1])
         # print(len(queue))
 
-        return None
+        return []
 
     def scan_callback(self, msg):
         # self.get_logger().info('In scan_callback')
@@ -613,18 +570,7 @@ class AutoNav(Node):
     def pick_direction(self):
         # self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
-            if len(self.occdata) != 0:
-                bot_position = (len(self.occdata) // 2, len(self.occdata[0]) // 2)
-                points_to_move = self.bfs(self.occdata, bot_position)
-                while len(points_to_move) != 0:
-                    first_point = points_to_move.pop(0)
-                    distance_to_point = math.dist(first_point, bot_position)
-                    angle_to_move = math.degrees(
-                        math.atan2(bot_position[1] - first_point[1], bot_position[0] - first_point[0]))
-                    target_yaw = math.radians(angle_to_move % 360)
-                    lr2i = target_yaw
-            else:
-                lr2i = 90
+            lr2i = random.randint(0, 360)
         else:
             lr2i = 0
             self.get_logger().info('No data!')
@@ -660,103 +606,113 @@ class AutoNav(Node):
             # rotate to that direction, and start moving
             while rclpy.ok():
                 twist = Twist()
+
                 if len(self.occdata) != 0:
                     # note that self.occdata is y then x
                     bot_position = self.bot_position
                     self.get_logger().info("bot position %s" % str(bot_position))
                     points_to_move = self.bfs(self.occdata, bot_position)
+
+                    if len(points_to_move) == 0:
+                        self.bfs_run = 1
+                    else:
+                        self.bfs_run = 0
+
                     for i in points_to_move:
                         self.occdata[i[0]][i[1]] = 0
-
                     np.savetxt(mapfile, self.occdata)
                     map_res = self.map_resolution
                     max_go = 0
 
                     # plt.cla()
-
-                    while len(points_to_move) != 0 and max_go < 10:
-                        max_go += 1
-                        if self.laser_range.size != 0:
-                            lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-
-                            if (len(lri[0]) > 0):
-                                # stop moving
+                    if self.bfs_run == 0:
+                        while len(points_to_move) != 0 and max_go < 10:
+                            max_go += 1
+                            if self.shoot == 1:
+                                self.shoot = 0
                                 self.stopbot()
-                        if self.shoot == 1:
-                            self.shoot = 0
-                            self.stopbot()
-                            msg2 = String()
-                            msg2.data = "fly"
-                            self.fly_.publish(msg2)
-                            time.sleep(20)
+                                msg2 = String()
+                                msg2.data = "fly"
+                                self.fly_.publish(msg2)
+                                time.sleep(20)
 
-                        # if len(points_to_move) > 1:
-                        #     points_to_move.pop(0)
+                            # if len(points_to_move) > 1:
+                            #     points_to_move.pop(0)
 
-                        first_point = points_to_move.pop(0)
+                            first_point = points_to_move.pop(0)
 
-                        self.get_logger().info("%s" % str(points_to_move))
-                        # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
-                        distance_to_point = math.dist(first_point, bot_position)
-                        angle_to_move = math.degrees(
-                            math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
-                        plt.grid()
-                        plt.xlabel("Rotation %f" % angle_to_move)
-                        plt.imshow(Image.fromarray(self.occdata), cmap='gray', origin='lower')
-                        plt.draw_all()
-                        # plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
-                        # pause to make sure the plot gets created
-                        plt.pause(0.00000000001)
-                        current_yaw = self.yaw
-                        self.get_logger().info('Current: %f' % math.degrees(current_yaw))
-                        c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                        target_yaw = math.radians(angle_to_move)
-                        # target_yaw = math.radians(0)
-                        c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
-                        self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
-                        c_change = c_target_yaw / c_yaw
-                        # get the sign of the imaginary component to figure out which way we have to turn
-                        c_change_dir = np.sign(c_change.imag)
-                        # set linear speed to zero so the TurtleBot rotates on the spot
-                        twist.linear.x = 0.0
-                        # set the direction to rotate
-                        twist.angular.z = c_change_dir * rotatechange
-                        # start rotation
-                        self.publisher_.publish(twist)
-
-                        # we will use the c_dir_diff variable to see if we can stop rotating
-                        c_dir_diff = c_change_dir
-                        # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
-                        # if the rotation direction was 1.0, then we will want to stop when the c_dir_diff
-                        # becomes -1.0, and vice versa
-                        while (c_change_dir * c_dir_diff > 0):
-                            # allow the callback functions to run
-                            rclpy.spin_once(self)
+                            self.get_logger().info("%s" % str(points_to_move))
+                            # self.get_logger().info("last point %d %d" % (first_point[1], first_point[0]))
+                            distance_to_point = math.dist(first_point, bot_position)
+                            angle_to_move = math.degrees(
+                                math.atan2(first_point[0] - bot_position[0], first_point[1] - bot_position[1])) % 360
+                            plt.grid()
+                            plt.xlabel("Rotation %f" % angle_to_move)
+                            plt.imshow(Image.fromarray(self.occdata), cmap='gray', origin='lower')
+                            plt.draw_all()
+                            # plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+                            # pause to make sure the plot gets created
+                            plt.pause(0.00000000001)
                             current_yaw = self.yaw
-                            # convert the current yaw to complex form
+                            self.get_logger().info('Current: %f' % math.degrees(current_yaw))
                             c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
-                            # self.get_logger().info('Current Yaw: %f' % math.degrees(current_yaw))
-                            # get difference in angle between current and target
+                            target_yaw = math.radians(angle_to_move)
+                            # target_yaw = math.radians(0)
+                            c_target_yaw = complex(math.cos(target_yaw), math.sin(target_yaw))
+                            self.get_logger().info('Desired: %f' % math.degrees(cmath.phase(c_target_yaw)))
                             c_change = c_target_yaw / c_yaw
-                            # get the sign to see if we can stop
-                            c_dir_diff = np.sign(c_change.imag)
+                            # get the sign of the imaginary component to figure out which way we have to turn
+                            c_change_dir = np.sign(c_change.imag)
+                            # set linear speed to zero so the TurtleBot rotates on the spot
+                            twist.linear.x = 0.0
+                            # set the direction to rotate
+                            twist.angular.z = c_change_dir * rotatechange
+                            # start rotation
+                            self.publisher_.publish(twist)
+
+                            # we will use the c_dir_diff variable to see if we can stop rotating
+                            c_dir_diff = c_change_dir
                             # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
-                        twist.angular.z = 0.0
-                        self.publisher_.publish(twist)
-                        twist.linear.x = speedchange
-                        self.publisher_.publish(twist)
-                        time.sleep((distance_to_point * map_res * 1.2) / speedchange)
-                        twist.linear.x = 0.0
-                        self.publisher_.publish(twist)
-                        bot_position = first_point
-                    # twist.angular.z = rotatechange
-                    # self.publisher_.publish(twist)
-                    # time.sleep(2*math.pi/rotatechange)
-                    # twist.angular.z = 0.0
-                    # self.publisher_.publish(twist)
+                            # if the rotation direction was 1.0, then we will want to stop when the c_dir_diff
+                            # becomes -1.0, and vice versa
+                            while (c_change_dir * c_dir_diff > 0):
+                                # allow the callback functions to run
+                                rclpy.spin_once(self)
+                                current_yaw = self.yaw
+                                # convert the current yaw to complex form
+                                c_yaw = complex(math.cos(current_yaw), math.sin(current_yaw))
+                                # self.get_logger().info('Current Yaw: %f' % math.degrees(current_yaw))
+                                # get difference in angle between current and target
+                                c_change = c_target_yaw / c_yaw
+                                # get the sign to see if we can stop
+                                c_dir_diff = np.sign(c_change.imag)
+                                # self.get_logger().info('c_change_dir: %f c_dir_diff: %f' % (c_change_dir, c_dir_diff))
+                            twist.angular.z = 0.0
+                            self.publisher_.publish(twist)
+                            twist.linear.x = speedchange
+                            self.publisher_.publish(twist)
+                            time.sleep((distance_to_point * map_res * 1.2) / speedchange)
+                            twist.linear.x = 0.0
+                            self.publisher_.publish(twist)
+                            bot_position = first_point
+                        # twist.angular.z = rotatechange
+                        # self.publisher_.publish(twist)
+                        # time.sleep(2*math.pi/rotatechange)
+                        # twist.angular.z = 0.0
+                        # self.publisher_.publish(twist)
+                    # if self.bfs_run == 1:
+                    #     if self.laser_range.size != 0:
+                    #         lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+                    #
+                    #         if (len(lri[0]) > 0):
+                    #             # stop moving
+                    #             self.stopbot()
+                    #             # find direction with the largest distance from the Lidar
+                    #             # rotate to that direction
+                    #             # start moving
+                    #         self.pick_direction()
 
-
-                # allow the callback functions to run
+                    # allow the callback functions to run
                 rclpy.spin_once(self)
 
         except Exception as e:
