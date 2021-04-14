@@ -32,6 +32,7 @@ setup(
             'r5auto_nav = auto_nav.r5auto_nav:main',
             'r6auto_nav = auto_nav.r6auto_nav:main',
             'r7auto_nav = auto_nav.r7auto_nav:main',
+            'r8auto_nav = auto_nav.r8auto_nav:main',
             'nav = auto_nav.nav:main',
             'fly = auto_nav.fly:main',
             'bfs = auto_nav.BFS:main',
