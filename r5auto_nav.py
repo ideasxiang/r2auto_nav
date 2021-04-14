@@ -227,9 +227,62 @@ class AutoNav(Node):
         self.occdata = np.array(img)
         # self.get_logger().info(str(self.occdata))
         # print to file
-        np.savetxt(mapfile, self.occdata)
 
     def bfs(self, graph, start):
+
+        padding = 4
+
+        def checkThree(data, x1, y1, dir1):
+            for j in range(0, padding):
+                if dir1 == 0:
+                    x1 += 1
+                if dir1 == 1:
+                    x1 -= 1
+                if dir1 == 2:
+                    y1 += 1
+                if dir1 == 3:
+                    y1 -= 1
+                if data[x1 + 1, y1] == 3:
+                    if checkThreeAgain(data, x1 + 1, y1, 2):
+                        return False
+                    if checkThreeAgain(data, x1 + 1, y1, 3):
+                        return False
+                if data[x1, y1 - 1] == 3:
+                    if checkThreeAgain(data, x1, y1 - 1, 0):
+                        return False
+                    if checkThreeAgain(data, x1, y1 - 1, 1):
+                        return False
+                if data[x1 - 1, y1] == 3:
+                    if checkThreeAgain(data, x1 - 1, y1, 2):
+                        return False
+                    if checkThreeAgain(data, x1 - 1, y1, 3):
+                        return False
+                if data[x1, y1 + 1] == 3:
+                    if checkThreeAgain(data, x1, y1 + 1, 0):
+                        return False
+                    if checkThreeAgain(data, x1, y1 + 1, 1):
+                        return False
+            return True
+
+        def checkThreeAgain(data, x1, y1, dir1):
+            for j in range(0, padding):
+                if dir1 == 0:
+                    x1 += 1
+                if dir1 == 1:
+                    x1 -= 1
+                if dir1 == 2:
+                    y1 += 1
+                if dir1 == 3:
+                    y1 -= 1
+                if data[x1 + 1, y1] == 3:
+                    return True
+                if data[x1, y1 - 1] == 3:
+                    return True
+                if data[x1 - 1, y1] == 3:
+                    return True
+                if data[x1, y1 + 1] == 3:
+                    return True
+            return False
         ###
         # Note X and Y is swap
         ###
@@ -272,223 +325,225 @@ class AutoNav(Node):
             # node x+1 y
             # print(x)
             # print(y)
-            if x + 1 < len(graph[0])and [x + 1, y] not in visited and graph[x + 1, y] != 3:
-                if l == 1:
-                    q = [path, [x + 1, y]]
-                    queue.append(q)
-                    if graph[x + 1, y] == 1:
-                        # print("ccc")
+            if x + 1 < len(graph[0]) - padding - 1 and [x + 1, y] not in visited and graph[x + 1, y] != 3:
+                if checkThree(graph, x + 1, y, 0) and checkThree(graph, x + 1, y, 1) and checkThree(graph, x + 1, y, 2) and checkThree(graph, x + 1, y, 3):
+                    if l == 1:
+                        q = [path, [x + 1, y]]
+                        queue.append(q)
+                        if graph[x + 1, y] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-                        i = i + 1
-                    new.append([x + 1, y])
-                    queue.append(new)
-                    if graph[x + 1, y] == 1:
-                        # print("ccc")
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
+                            i = i + 1
+                        new.append([x + 1, y])
+                        queue.append(new)
+                        if graph[x + 1, y] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
+                            return new
+                    # new_path.append([x+1,y])
 
                 visited.append([x + 1, y])
             # node x+1 y+1
-            if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[
-                x + 1, y + 1] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x + 1, y + 1] == 1:
-                        # print("ccc")
-
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-
-                        i = i + 1
-
-                    new.append([x + 1, y + 1])
-                    queue.append(new)
-                    if graph[x + 1, y + 1] == 1:
-                        # print("ccc")
-
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x + 1, y + 1])
+            # if x + 1 < len(graph[0]) and y + 1 < len(graph) and [x + 1, y + 1] not in visited and graph[
+            #     x + 1, y + 1] != 3:
+            #     if (l == 1):
+            #         q = []
+            #         q.append(path)
+            #         q.append([x + 1, y + 1])  # queue.append( path + [x+1,y])
+            #         queue.append(q)
+            #         if graph[x + 1, y + 1] == 1:
+            #             # print("ccc")
+            #
+            #             return q
+            #     else:
+            #         i = 0
+            #         new = []
+            #         while (i <= len(path) - 1):
+            #             new.append(path[i])
+            #
+            #             i = i + 1
+            #
+            #         new.append([x + 1, y + 1])
+            #         queue.append(new)
+            #         if graph[x + 1, y + 1] == 1:
+            #             # print("ccc")
+            #
+            #             return new
+            #     # new_path.append([x+1,y])
+            #     visited.append([x + 1, y + 1])
             # node x y+1
-            if y + 1 < len(graph) and [x, y + 1] not in visited and graph[x, y + 1] != 3:
+            if y + 1 < len(graph) - padding - 1 and [x, y + 1] not in visited and graph[x, y + 1] != 3:
+                if checkThree(graph, x, y + 1, 0) and checkThree(graph, x, y + 1, 1) and checkThree(graph, x, y + 1, 2) and checkThree(graph, x, y + 1, 3):
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x, y + 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x, y + 1] == 1:
+                            # print("ccc")
 
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x, y + 1] == 1:
-                        # print("ccc")
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            i = i + 1
 
-                        i = i + 1
+                        new.append([x, y + 1])
+                        queue.append(new)
+                        if graph[x, y + 1] == 1:
+                            # print("ccc")
 
-                    new.append([x, y + 1])
-                    queue.append(new)
-                    if graph[x, y + 1] == 1:
-                        # print("ccc")
-
-                        return new
-                visited.append([x, y + 1])
+                            return new
+                    visited.append([x, y + 1])
             # node x-1 y+1
-            if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[
-                x - 1, y + 1] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y + 1] == 1:
-                        # print("ccc")
-
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-
-                        i = i + 1
-
-                    new.append([x - 1, y + 1])
-                    queue.append(new)
-                    if graph[x - 1, y + 1] == 1:
-                        # print("ccc")
-
-                        return new
-                visited.append([x - 1, y + 1])
+            # if x - 1 > -1 and y + 1 < len(graph) and [x - 1, y + 1] not in visited and graph[
+            #     x - 1, y + 1] != 3:
+            #     if (l == 1):
+            #         q = []
+            #         q.append(path)
+            #         q.append([x - 1, y + 1])  # queue.append( path + [x+1,y])
+            #         queue.append(q)
+            #         if graph[x - 1, y + 1] == 1:
+            #             # print("ccc")
+            #
+            #             return q
+            #     else:
+            #         i = 0
+            #         new = []
+            #         while (i <= len(path) - 1):
+            #             new.append(path[i])
+            #
+            #             i = i + 1
+            #
+            #         new.append([x - 1, y + 1])
+            #         queue.append(new)
+            #         if graph[x - 1, y + 1] == 1:
+            #             # print("ccc")
+            #
+            #             return new
+            #     visited.append([x - 1, y + 1])
 
             # node x-1 y
-            if x - 1 > -1 and [x - 1, y] not in visited and graph[x - 1, y] != 3 and graph[x - 2, y] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y] == 1:
-                        # print("ccc")
+            if x - 1 > -padding and [x - 1, y] not in visited and graph[x - 1, y] != 3:
+                if checkThree(graph, x - 1, y, 0) and checkThree(graph, x - 1, y, 1) and checkThree(graph, x - 1, y, 2) and checkThree(graph, x - 1, y, 3):
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x - 1, y])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x - 1, y] == 1:
+                            # print("ccc")
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        i = i + 1
+                            i = i + 1
 
-                    new.append([x - 1, y])
-                    queue.append(new)
-                    if graph[x - 1, y] == 1:
-                        # print("ccc")
+                        new.append([x - 1, y])
+                        queue.append(new)
+                        if graph[x - 1, y] == 1:
+                            # print("ccc")
 
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x - 1, y])
+                            return new
+                    # new_path.append([x+1,y])
+                    visited.append([x - 1, y])
             # node x-1 y-1
-            if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3:
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x - 1, y - 1] == 1:
-                        print("ccc")
-
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-
-                        i = i + 1
-
-                    new.append([x - 1, y - 1])
-                    queue.append(new)
-                    if graph[x - 1, y - 1] == 1:
-                        # print("ccc")
-
-                        return new
-                visited.append([x - 1, y - 1])
+            # if x - 1 > -1 and y - 1 > -1 and [x - 1, y - 1] not in visited and graph[x - 1, y - 1] != 3:
+            #     if (l == 1):
+            #         q = []
+            #         q.append(path)
+            #         q.append([x - 1, y - 1])  # queue.append( path + [x+1,y])
+            #         queue.append(q)
+            #         if graph[x - 1, y - 1] == 1:
+            #             print("ccc")
+            #
+            #             return q
+            #     else:
+            #         i = 0
+            #         new = []
+            #         while (i <= len(path) - 1):
+            #             new.append(path[i])
+            #
+            #             i = i + 1
+            #
+            #         new.append([x - 1, y - 1])
+            #         queue.append(new)
+            #         if graph[x - 1, y - 1] == 1:
+            #             # print("ccc")
+            #
+            #             return new
+            #     visited.append([x - 1, y - 1])
 
             # node x y-1
-            if y - 1 > -1 and [x, y - 1] not in visited and graph[x, y - 1] != 3:
+            if y - 1 > -padding and [x, y - 1] not in visited and graph[x, y - 1] != 3:
+                if checkThree(graph, x, y - 1, 0) and checkThree(graph, x, y - 1, 1) and checkThree(graph, x, y - 1, 2) and checkThree(graph, x, y - 1, 3):
+                    if (l == 1):
+                        q = []
+                        q.append(path)
+                        q.append([x, y - 1])  # queue.append( path + [x+1,y])
+                        queue.append(q)
+                        if graph[x, y - 1] == 1:
+                            # print("ccc")
 
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x, y - 1] == 1:
-                        # print("ccc")
+                            return q
+                    else:
+                        i = 0
+                        new = []
+                        while (i <= len(path) - 1):
+                            new.append(path[i])
 
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
+                            i = i + 1
 
-                        i = i + 1
+                        new.append([x, y - 1])
+                        queue.append(new)
+                        if graph[x, y - 1] == 1:
+                            # print("ccc")
 
-                    new.append([x, y - 1])
-                    queue.append(new)
-                    if graph[x, y - 1] == 1:
-                        # print("ccc")
-
-                        return new
-                # new_path.append([x+1,y])
-                visited.append([x, y - 1])
+                            return new
+                    # new_path.append([x+1,y])
+                    visited.append([x, y - 1])
             # node x+1 y-1
-            if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[
-                x + 1, y - 1] != 3:
-
-                # new_path.append([x+1,y-1])
-                if (l == 1):
-                    q = []
-                    q.append(path)
-                    q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
-                    queue.append(q)
-                    if graph[x + 1, y - 1] == 1:
-                        # print("ccc")
-
-                        return q
-                else:
-                    i = 0
-                    new = []
-                    while (i <= len(path) - 1):
-                        new.append(path[i])
-
-                        i = i + 1
-
-                    new.append([x + 1, y - 1])
-                    queue.append(new)
-                    if graph[x + 1, y - 1] == 1:
-                        # print("ccc")
-
-                        return new
-                visited.append([x + 1, y - 1])
+            # if x + 1 < len(graph[0]) and y - 1 > -1 and [x + 1, y - 1] not in visited and graph[
+            #     x + 1, y - 1] != 3:
+            #
+            #     # new_path.append([x+1,y-1])
+            #     if (l == 1):
+            #         q = []
+            #         q.append(path)
+            #         q.append([x + 1, y - 1])  # queue.append( path + [x+1,y])
+            #         queue.append(q)
+            #         if graph[x + 1, y - 1] == 1:
+            #             # print("ccc")
+            #
+            #             return q
+            #     else:
+            #         i = 0
+            #         new = []
+            #         while (i <= len(path) - 1):
+            #             new.append(path[i])
+            #
+            #             i = i + 1
+            #
+            #         new.append([x + 1, y - 1])
+            #         queue.append(new)
+            #         if graph[x + 1, y - 1] == 1:
+            #             # print("ccc")
+            #
+            #             return new
+            #     visited.append([x + 1, y - 1])
         # print(len(queue))
 
         return None
@@ -612,11 +667,21 @@ class AutoNav(Node):
                     points_to_move = self.bfs(self.occdata, bot_position)
                     for i in points_to_move:
                         self.occdata[i[0]][i[1]] = 0
+
+                    np.savetxt(mapfile, self.occdata)
                     map_res = self.map_resolution
+                    max_go = 0
 
                     # plt.cla()
 
-                    while len(points_to_move) != 0:
+                    while len(points_to_move) != 0 and max_go < 10:
+                        max_go += 1
+                        if self.laser_range.size != 0:
+                            lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+
+                            if (len(lri[0]) > 0):
+                                # stop moving
+                                self.stopbot()
                         if self.shoot == 1:
                             self.shoot = 0
                             self.stopbot()
@@ -680,7 +745,7 @@ class AutoNav(Node):
                         self.publisher_.publish(twist)
                         twist.linear.x = speedchange
                         self.publisher_.publish(twist)
-                        time.sleep((distance_to_point * map_res) / speedchange)
+                        time.sleep((distance_to_point * map_res * 1.2) / speedchange)
                         twist.linear.x = 0.0
                         self.publisher_.publish(twist)
                         bot_position = first_point
@@ -690,17 +755,6 @@ class AutoNav(Node):
                     # twist.angular.z = 0.0
                     # self.publisher_.publish(twist)
 
-                # if self.laser_range.size != 0:
-                #     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-                #
-                #     if (len(lri[0]) > 0):
-                #         self.why_stop = 2
-                #         # stop moving
-                #         self.stopbot()
-                #         # find direction with the largest distance from the Lidar
-                #         # rotate to that direction
-                #         # start moving
-                #         self.pick_direction()
 
                 # allow the callback functions to run
                 rclpy.spin_once(self)
