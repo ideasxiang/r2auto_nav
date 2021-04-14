@@ -31,7 +31,8 @@ speedchange = -0.2
 occ_bins = [-1, 0, 100, 101]
 stop_distance = 0.4
 front_angle = 30
-front_angles = range(160, 200, 1)
+front_angles = range(150, 210, 1)
+side_angles = range(80, 100, 1)
 scanfile = 'lidar.txt'
 mapfile = 'map.txt'
 
@@ -200,41 +201,45 @@ class AutoNav(Node):
         msg2 = String()
         pwm = 5.5
         max_pwm = 7.0
-        if(float(obj_temp)>=31.0):
-            # self.get_logger().info("Detect obj %s threshold %f" % (obj_temp, self.threshold))
-            # while (float(obj_temp) >= self.threshold):
-            #     self.get_logger().info("Right obj %s threshold %f" % (obj_temp, self.threshold))
-            #     threshold = float(obj_temp)
-            #     self.stopbot()
-            #     self.rotatebot(2)
-            # self.stopbot()
-            # self.rotatebot(-2)
-            # while (float(obj_temp) >= self.threshold):
-            #     self.get_logger().info("Left obj %s threshold %f" % (obj_temp, self.threshold))
-            #     threshold = float(obj_temp)
-            #     self.stopbot()
-            #     self.rotatebot(-2)
-            # self.stopbot()
-            # self.rotatebot(2)
+        threshold = float(ambient_temp) + 0.5
+        if float(obj_temp) >= threshold:
+            self.get_logger().info("Detected")
             self.stopbot()
+            # while float(obj_temp) >= threshold:
+            #     threshold = float(obj_temp)
+            # self.get_logger().info("Threshold %s" % threshold)
+            # self.stopbot()
+            # self.rotatebot(1)
+            #
+            # self.stopbot()
+            # self.rotatebot(359)
+            # # while float(obj_temp) >= threshold:
+            # #     threshold = float(obj_temp)
+            # self.get_logger().info("Threshold %s" % threshold)
+            # self.stopbot()
+            # self.rotatebot(-1)
+            #
+            # self.stopbot()
+            # self.rotatebot(1)
+            # self.stopbot()
             msg2.data = f"servo,{pwm}"
             self.fly_.publish(msg2)
-            while(float(obj_temp)>=31.0) and pwm < max_pwm:
+            while (float(obj_temp) >= threshold) and pwm < max_pwm:
                 pwm += 0.5
                 msg2.data = f"servo,{pwm}"
                 self.fly_.publish(msg2)
-            msg2.data='fly'
+            msg2.data = 'fly'
             self.fly_.publish(msg2)
             time.sleep(20)
             msg2.data = f"servo,{5.5}"
             self.fly_.publish(msg2)
-            self.pick_direction()
+            self.mover()
 
     def pick_direction(self):
         # self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = 5
+            lr2i = 1
             self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
         else:
             lr2i = 0
@@ -274,11 +279,12 @@ class AutoNav(Node):
             while rclpy.ok():
                 if self.laser_range.size != 0:
                     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+                    lri2 = (self.laser_range[side_angles] > 0.3).nonzero()
 
-                    self.get_logger().info("Distance at 90 %f" % self.laser_range[90])
-                    if self.laser_range[90] > stop_distance and not len(lri[0]) > 0:
+                    # self.get_logger().info("Distance at 90 %f" % self.laser_range[90])
+                    if len(lri2[0]) > 0 and not len(lri[0]) > 0:
                         self.stopbot()
-                        self.rotatebot(-5)
+                        self.rotatebot(-1)
                         twist = Twist()
                         twist.linear.x = speedchange
                         twist.angular.z = 0.0

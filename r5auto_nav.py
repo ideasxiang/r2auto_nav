@@ -35,7 +35,7 @@ from PIL import Image, ImageDraw
 rotatechange = 0.6
 speedchange = 0.2
 occ_bins = [-1, 0, 60, 100]
-stop_distance = 0.55
+stop_distance = 0.6
 front_angle = 30
 front_angles = range(-front_angle, front_angle + 1, 1)
 scanfile = 'lidar.txt'
@@ -231,7 +231,7 @@ class AutoNav(Node):
 
     def bfs(self, graph, start):
 
-        padding = 3
+        padding = 1
 
         def checkThree(data, x1, y1):
             for k in range(-padding, padding+1):
