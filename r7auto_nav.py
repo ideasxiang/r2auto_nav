@@ -209,7 +209,7 @@ class AutoNav(Node):
             #     threshold = float(obj_temp)
             # self.get_logger().info("Threshold %s" % threshold)
             # self.stopbot()
-            # self.rotatebot(1)
+            # self.rotatebot(10)
             #
             # self.stopbot()
             # self.rotatebot(359)
@@ -233,13 +233,19 @@ class AutoNav(Node):
             time.sleep(20)
             msg2.data = f"servo,{5.5}"
             self.fly_.publish(msg2)
-            self.mover()
+            twist = Twist()
+            twist.linear.x = speedchange
+            twist.angular.z = 0.0
+            # not sure if this is really necessary, but things seem to work more
+            # reliably with this
+            time.sleep(0.1)
+            self.publisher_.publish(twist)
 
     def pick_direction(self):
         # self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = 1
+            lr2i = 5
             self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
         else:
             lr2i = 0
