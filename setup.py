@@ -36,7 +36,8 @@ setup(
             'nav = auto_nav.nav:main',
             'fly = auto_nav.fly:main',
             'bfs = auto_nav.BFS:main',
-            'bfs2 = auto_nav.BFS2:main'
+            'bfs2 = auto_nav.BFS2:main',
+            'nav10 = auto_nav.nav_10:main'
         ],
     },
 )

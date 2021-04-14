@@ -188,6 +188,20 @@ class AutoNav(Node):
         odata = np.uint8(binnum.reshape(msg.info.height, msg.info.width))
         # set current robot location to 0
         odata[grid_y][grid_x] = 0
+        # if len(odata) != 0:
+        #     for k in range(0, 5):
+        #         for i in range(0, len(odata)):
+        #             for j in range(0, len(odata[0])):
+        #                 if odata[i, j] == 3 and i + 1 < len(odata[0]) and j + 1 < len(odata) and i - 1 < -1 and j - 1 < -1:
+        #                     odata[i + 1, j] = 3
+        #                     odata[i + 1, j - 1] = 3
+        #                     odata[i, j - 1] = 3
+        #                     odata[i - 1, j - 1] = 3
+        #                     odata[i - 1, j] = 3
+        #                     odata[i - 1, j + 1] = 3
+        #                     odata[i, j + 1] = 3
+        #                     odata[i + 1, j + 1] = 3
+
         self.bot_position = [grid_y, grid_x]
         # create image from 2D array using PIL
         img = Image.fromarray(odata)
@@ -226,12 +240,17 @@ class AutoNav(Node):
         img_transformed.paste(img, (left, top))
 
         self.occdata = np.array(img)
+
         # self.get_logger().info(str(self.occdata))
         # print to file
+        # plt.imshow(Image.fromarray(self.occdata), cmap='gray', origin='lower')
+        # plt.draw_all()
+        # plt.pause(0.0000000001)
+        # np.savetxt(mapfile, self.occdata)
 
     def bfs(self, graph, start):
 
-        padding = 1
+        padding = 5
 
         def checkThree(data, x1, y1):
             for k in range(-padding, padding+1):
@@ -650,7 +669,7 @@ class AutoNav(Node):
                             plt.xlabel("Rotation %f" % angle_to_move)
                             plt.imshow(Image.fromarray(self.occdata), cmap='gray', origin='lower')
                             plt.draw_all()
-                            # plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
+                            plt.savefig(f"{time.strftime('%Y%m%d%H%M%S')}.png")
                             # pause to make sure the plot gets created
                             plt.pause(0.00000000001)
                             current_yaw = self.yaw
