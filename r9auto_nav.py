@@ -200,7 +200,7 @@ class AutoNav(Node):
         obj_temp, ambient_temp = str(msg.data).split(',')
         msg2 = String()
         pwm = 5.5
-        max_pwm = 8.0
+        max_pwm = 7.0
         threshold = float(ambient_temp) + 0.5
         if float(obj_temp) >= threshold:
             self.get_logger().info("Detected")
@@ -217,7 +217,7 @@ class AutoNav(Node):
             # #     threshold = float(obj_temp)
             # self.get_logger().info("Threshold %s" % threshold)
             # self.stopbot()
-            self.rotatebot(-1)
+            # self.rotatebot(-1)
             #
             # self.stopbot()
             # self.rotatebot(1)
@@ -233,14 +233,19 @@ class AutoNav(Node):
             time.sleep(20)
             msg2.data = f"servo,{5.5}"
             self.fly_.publish(msg2)
-            self.rotatebot(-90)
-            rclpy.spin_once(self)
+            twist = Twist()
+            twist.linear.x = speedchange
+            twist.angular.z = 0.0
+            # not sure if this is really necessary, but things seem to work more
+            # reliably with this
+            time.sleep(0.1)
+            self.publisher_.publish(twist)
 
     def pick_direction(self):
         # self.get_logger().info('In pick_direction')
         if self.laser_range.size != 0:
             # use nanargmax as there are nan's in laser_range added to replace 0's
-            lr2i = 1
+            lr2i = 90
             self.get_logger().info('Picked direction: %d %f m' % (lr2i, self.laser_range[lr2i]))
         else:
             lr2i = 0
@@ -275,36 +280,51 @@ class AutoNav(Node):
 
             # find direction with the largest distance from the Lidar,
             # rotate to that direction, and start moving
-            self.pick_direction()
+            # self.pick_direction()
+            # twist = Twist()
+            # twist.linear.x = 0.0
+            # # twist.angular.z = 0.0
+            # # # not sure if this is really necessary, but things seem to work more
+            # # # reliably with this
+            # # self.publisher_.publish(twist)
+            # # time.sleep(0.5)
+            # twist.angular.z = rotatechange
+            # self.publisher_.publish(twist)
+            # time.sleep(1.0)
+            # twist.angular.z = 0.0
+            # self.publisher_.publish(twist)
+            # self.pick_direction()
+
 
             while rclpy.ok():
-                if self.laser_range.size != 0:
-                    lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
-                    lri2 = (self.laser_range[side_angles] > 0.3).nonzero()
-
-                    # self.get_logger().info("Distance at 90 %f" % self.laser_range[90])
-                    if len(lri2[0]) > 0 and not len(lri[0]) > 0:
-                        self.stopbot()
-                        self.rotatebot(-1)
-                        twist = Twist()
-                        twist.linear.x = speedchange
-                        twist.angular.z = 0.0
-                        # not sure if this is really necessary, but things seem to work more
-                        # reliably with this
-                        self.publisher_.publish(twist)
-                    # check distances in front of TurtleBot and find values less
-                    # than stop_distance
-
-                    # self.get_logger().info('Distances: %s' % str(lri))
-
-                    # if the list is not empty
-                    if (len(lri[0]) > 0):
-                        # stop moving
-                        self.stopbot()
-                        # find direction with the largest distance from the Lidar
-                        # rotate to that direction
-                        # start moving
-                        self.pick_direction()
+                self.rotatebot(360)
+                # if self.laser_range.size != 0:
+                #     lri = (self.laser_range[front_angles] < float(stop_distance)).nonzero()
+                #     lri2 = (self.laser_range[side_angles] > 0.3).nonzero()
+                #
+                #     # self.get_logger().info("Distance at 90 %f" % self.laser_range[90])
+                #     if len(lri2[0]) > 0 and not len(lri[0]) > 0:
+                #         self.stopbot()
+                #         self.rotatebot(-1)
+                #         twist = Twist()
+                #         twist.linear.x = speedchange
+                #         twist.angular.z = 0.0
+                #         # not sure if this is really necessary, but things seem to work more
+                #         # reliably with this
+                #         self.publisher_.publish(twist)
+                #     # check distances in front of TurtleBot and find values less
+                #     # than stop_distance
+                #
+                #     # self.get_logger().info('Distances: %s' % str(lri))
+                #
+                #     # if the list is not empty
+                #     if (len(lri[0]) > 0):
+                #         # stop moving
+                #         self.stopbot()
+                #         # find direction with the largest distance from the Lidar
+                #         # rotate to that direction
+                #         # start moving
+                #         self.pick_direction()
 
                 # allow the callback functions to run
                 rclpy.spin_once(self)
