@@ -5,3 +5,14 @@ R2auto_nav is implements basic unmapped area detected, R3 and R4 are duplicates 
 
 ------
 ### Getting Started
+1. Connect to Wifi hotspot
+2. SSH into turtlebot using `sshrp`
+3. Run `rosbu` in terminal connected to Turtlebot
+4. Run `rslam` in another terminal
+5. `cd ~/colcon_ws` and do `colcon build` in a new terminal
+6. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm
+7. Open another terminal and `sshrp`
+8. Run `python3 fly_sub3.py` in the same terminal
+9. Open another terminal and `sshrp`
+10. Run `python3 fly_pub3.py` in the same terminal
+11. Voilà you are done 
