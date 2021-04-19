@@ -6,7 +6,7 @@ Information about the turtlebot3 burger used can be found [here](https://emanual
 
 ------
 ### Getting Started
-1. Under ~/colcon_ws/build/auto_nav/auto_nav, do `git clone https://github.com/ideasxiang/r2auto_nav.git`
+1. Under *~/colcon_ws/build/auto_nav/auto_nav*, do `git clone https://github.com/ideasxiang/r2auto_nav.git`
 2. Connect to Wifi hotspot
 3. SSH into turtlebot using `sshrp`
 4. Run `rosbu` in terminal connected to Turtlebot
