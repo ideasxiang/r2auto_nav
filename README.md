@@ -6,14 +6,15 @@ Information about the turtlebot3 burger used can be found [here](https://emanual
 
 ------
 ### Getting Started
-1. Connect to Wifi hotspot
-2. SSH into turtlebot using `sshrp`
-3. Run `rosbu` in terminal connected to Turtlebot
-4. Run `rslam` in another terminal
-5. Open another terminal and `sshrp`
-6. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot)
-7. Open another terminal and `sshrp`
-8. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
-9. In a new terminal, `cd ~/colcon_ws` and do `colcon build` 
-10. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm
-11. Voilà you are done 
+1. Under ~/colcon_ws/build/auto_nav/auto_nav, do `git clone https://github.com/ideasxiang/r2auto_nav.git`
+2. Connect to Wifi hotspot
+3. SSH into turtlebot using `sshrp`
+4. Run `rosbu` in terminal connected to Turtlebot
+5. Run `rslam` in another terminal
+6. Open another terminal and `sshrp`
+7. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot)
+8. Open another terminal and `sshrp`
+9. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
+10. In a new terminal, `cd ~/colcon_ws` and do `colcon build` (Ensure that installation for Turtlebot3 Foxy is done)
+11. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm (Ensure in the folder auto_nav that setup.py has correct code)
+12. Voilà you are done 
