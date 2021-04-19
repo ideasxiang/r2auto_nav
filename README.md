@@ -11,9 +11,9 @@ Information about the turtlebot3 burger used can be found [here](https://emanual
 3. Run `rosbu` in terminal connected to Turtlebot
 4. Run `rslam` in another terminal
 5. `cd ~/colcon_ws` and do `colcon build` in a new terminal
-6. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm
-7. Open another terminal and `sshrp`
-8. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot)
-9. Open another terminal and `sshrp`
-10. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
+6. Open another terminal and `sshrp`
+7. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot)
+8. Open another terminal and `sshrp`
+9. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
+10. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm
 11. Voilà you are done 
