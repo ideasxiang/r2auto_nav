@@ -28,3 +28,8 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 1. `sudo apt-get install minicom`
 2. `dmesg | grep tty`
 3. Note the tty port used eg. *ttyUSB1*
+
+### Editing threshold value in r7auto_nav
+1. Open r7auto_nav.py file
+2. Search for `threshold = float(ambient_temp) + 0.5`
+3. Edit the *0.5* to the value you want
