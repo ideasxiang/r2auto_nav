@@ -25,10 +25,11 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 14. Voilà you are done
 
 ### Checking USB port used for infrared sensor
-1. Open terminal in ubuntu
-2. `sudo apt-get install minicom`
-3. `dmesg | grep tty`
-4. Note the tty port used e.g. *ttyUSB1*
+1. Connect MLX90614 evaluation board to rpi on turtlebot using USB cable
+2. Open terminal in ubuntu
+3. `sudo apt-get install minicom`
+4. `dmesg | grep tty`
+5. Note the tty port used e.g. *ttyUSB1*
 
 ### Editing Infrared sensor threshold value in r7auto_nav
 1. Open r7auto_nav.py file
