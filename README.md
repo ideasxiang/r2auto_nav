@@ -15,12 +15,14 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 4. Run `rosbu` in terminal connected to Turtlebot
 5. Run `rslam` in another terminal
 6. Open another terminal and `sshrp`
-7. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot and edit the port in the file)
-8. Open another terminal and `sshrp`
-9. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot and edit the port in the file)
-10. In a new terminal, `cd ~/colcon_ws` and do `colcon build` (Ensure that installation for Turtlebot3 Foxy is done)
-11. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm (Ensure in the folder auto_nav that setup.py has correct code)
-12. Voilà you are done
+7. Copy the code for fly_sub3.py onto the rpi on Turtlebot and edit the port connected to thermal sensor (See below to find the port used)
+8. Run `python3 fly_sub3.py` in the same terminal
+9. Open another terminal and `sshrp`
+10. Copy the code for fly_pub3.py onto the rpi on Turtlebot and edit the port connected to thermal sensor (See below to find the port used)
+11. Run `python3 fly_pub3.py` in the same terminal
+12. In a new terminal, `cd ~/colcon_ws` and do `colcon build` (Ensure that installation for Turtlebot3 Foxy is done)
+13. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm (Ensure in the folder auto_nav that setup.py has correct code)
+14. Voilà you are done
 
 ### Checking USB port used
 1. `sudo apt-get install minicom`
