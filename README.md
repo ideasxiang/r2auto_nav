@@ -25,7 +25,7 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 14. Voilà you are done
 
 ### Checking USB port used for infrared sensor
-1. Connect MLX90614 evaluation board to rpi on turtlebot using USB cable
+1. Connect MLX90614 evaluation board with FTDI Basic Breakout to rpi on turtlebot using USB cable
 2. Open terminal in ubuntu
 3. `sudo apt-get install minicom`
 4. `dmesg | grep tty`
