@@ -32,4 +32,6 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 ### Editing threshold value in r7auto_nav
 1. Open r7auto_nav.py file
 2. Search for `threshold = float(ambient_temp) + 0.5`
-3. Edit the *0.5* to the value you want
+3. Change it to `threshold = float(ambient_temp) + 1.0` or whichever value
+4. Run `cd ~/colcon_ws`
+5. Run `colcon build`
