@@ -24,11 +24,11 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 13. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm (Ensure in the folder auto_nav that setup.py has correct code)
 14. Voilà you are done
 
-### Checking USB port used
+### Checking USB port used for infrared sensor
 1. Open terminal in ubuntu
 2. `sudo apt-get install minicom`
 3. `dmesg | grep tty`
-4. Note the tty port used eg. *ttyUSB1*
+4. Note the tty port used e.g. *ttyUSB1*
 
 ### Editing Infrared sensor threshold value in r7auto_nav
 1. Open r7auto_nav.py file
