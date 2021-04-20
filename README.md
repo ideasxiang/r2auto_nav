@@ -20,4 +20,9 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 9. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
 10. In a new terminal, `cd ~/colcon_ws` and do `colcon build` (Ensure that installation for Turtlebot3 Foxy is done)
 11. `ros2 run auto_nav r7auto_nav` to run the wall following algorithm (Ensure in the folder auto_nav that setup.py has correct code)
-12. Voilà you are done 
+12. Voilà you are done
+
+### Checking USB port used
+1. `sudo apt-get install minicom`
+2. `dmesg | grep tty`
+3. Note the tty port used eg. *ttyUSB1*
