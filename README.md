@@ -25,9 +25,10 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 14. Voilà you are done
 
 ### Checking USB port used
-1. `sudo apt-get install minicom`
-2. `dmesg | grep tty`
-3. Note the tty port used eg. *ttyUSB1*
+1. Open terminal in ubuntu
+2. `sudo apt-get install minicom`
+3. `dmesg | grep tty`
+4. Note the tty port used eg. *ttyUSB1*
 
 ### Editing Infrared sensor threshold value in r7auto_nav
 1. Open r7auto_nav.py file
