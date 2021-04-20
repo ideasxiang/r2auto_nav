@@ -15,7 +15,7 @@ Installation can be found [here](https://emanual.robotis.com/docs/en/platform/tu
 4. Run `rosbu` in terminal connected to Turtlebot
 5. Run `rslam` in another terminal
 6. Open another terminal and `sshrp`
-7. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot)
+7. Run `python3 fly_sub3.py` in the same terminal (Make sure to copy the code for fly_sub3.py onto the rpi on Turtlebot and edit the port in the file)
 8. Open another terminal and `sshrp`
 9. Run `python3 fly_pub3.py` in the same terminal (Make sure to copy the code for fly_pub3.py onto the rpi on Turtlebot)
 10. In a new terminal, `cd ~/colcon_ws` and do `colcon build` (Ensure that installation for Turtlebot3 Foxy is done)
